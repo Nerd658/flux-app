@@ -1,0 +1,48 @@
+[2026-11-02] - Circuit de validation à 3 niveaux, complétion de profil et intégration Oline
+
+What changed:
+- Refonte du circuit de validation vers un modèle métier à 3 niveaux :
+  * Niveau 1 : Manager de département (filtré par CUID de manager associé à chaque direction).
+  * Niveau 2 : Validateur Technique Sécurité (rôle securite).
+  * Niveau 3 : Approbation finale RSSI (rôle rssi).
+- Ajout du champ manager_cuid sur la table directions et flux_requests avec gestion dans le panneau d'administration.
+- Mise à jour du composant de progression (4 jalons), des badges de statut et de l'export PDF avec les 3 signatures Ed25519.
+- Ajout du module de complétion de profil lors de la première connexion (ProfileModal) :
+  * Détection automatique des profils incomplets (prénom absent, nom égal au CUID ou email en @annuaire.invalid).
+  * Saisie guidée du prénom, du nom, de l'email professionnel et sélection de la direction de rattachement.
+  * Protection contre l'écrasement des données saisies lors des reconnexions Active Directory ultérieures.
+  * Route PUT /api/auth/profile avec validation stricte et traçabilité dans le journal d'audit.
+- Intégration du client Oline / iTop (backend/app/oline.py) avec support des pièces jointes en mémoire (PDF signé).
+- Script de test de connectivité Oline (backend/test_oline.py).
+
+Why:
+- Simplification et alignement avec l'organisation interne : chaque responsable de département valide les demandes de ses équipes.
+- Amélioration de l'expérience utilisateur et de la traçabilité des demandeurs authentifiés via l'Active Directory.
+- Préparation de l'automatisation de la création de tickets d'ouverture de flux dans l'outil de ticketing Oline / iTop.
+
+Files affected:
+- backend/app/models.py - Rôles manager, securite, rssi, statuts validee_manager, validee_technique, et colonne manager_cuid
+- backend/app/schemas.py - Schémas ProfileUpdateIn, DirectionOut, champ profil_incomplet sur UserOut
+- backend/app/services/request_service.py - Table de transition à 3 niveaux et contrôle d'accès strict par CUID manager
+- backend/app/services/auth_service.py - Méthode update_profile et protection des profils dans sync_from_directory
+- backend/app/routers/auth.py - Route PUT /api/auth/profile
+- backend/app/routers/requests.py - Autorisation des rôles manager, securite, rssi
+- backend/app/pdf.py - Mise en page des 3 blocs de validation signée
+- backend/app/seed.py - Initialisation des comptes de test manager, sécurité, RSSI et directions
+- backend/app/oline.py - Client Oline / iTop
+- backend/test_oline.py - Script de test de connexion Oline
+- frontend/src/App.jsx - Navigation multi-rôles et modale de complétion de profil
+- frontend/src/auth.js - Rôles manager, securite, rssi
+- frontend/src/components/StatusBadge.jsx - Statuts validee_manager et validee_technique
+- frontend/src/pages/RequestPage.jsx - Tracker à 3 niveaux et habilitation par rôle
+- frontend/src/pages/Validation.jsx - Adaptation des files et KPIs pour les 3 rôles
+- frontend/src/pages/NewRequest.jsx - Affichage du responsable de département
+- frontend/src/pages/admin/Referentials.jsx - Gestion du CUID manager par direction
+- frontend/src/pages/admin/Users.jsx - Attribution des nouveaux rôles
+
+Breaking changes:
+- None (rétro-compatibilité assurée sur les anciens statuts de validation).
+
+Notes for review:
+- Renseigner OLINE_URL et OLINE_API_KEY dans backend/.env pour activer la synchronisation avec le système de ticketing.
+- Vérifier la configuration des CUID des managers pour chaque direction dans l'espace Référentiels de l'administration.
