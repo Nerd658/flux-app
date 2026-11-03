@@ -248,6 +248,7 @@ class ValidationOut(BaseModel):
 class RequestSummary(BaseModel):
     id: int
     reference: str
+    ticket_ref: str | None = None
     flux_type: str
     demandeur: str
     statut: Statut
@@ -258,6 +259,7 @@ class RequestSummary(BaseModel):
 class RequestDetail(BaseModel):
     id: int | None = None                # absent en prévisualisation
     reference: str | None = None
+    ticket_ref: str | None = None
     statut: Statut | None = None
     created_at: datetime | None = None
     content_hash: str | None = None

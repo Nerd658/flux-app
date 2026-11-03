@@ -80,6 +80,7 @@ class RequestService:
         return RequestDetail(
             id=req.id,
             reference=req.reference,
+            ticket_ref=req.ticket_ref,
             statut=req.statut,
             created_at=req.created_at,
             content_hash=req.content_hash,
@@ -121,6 +122,7 @@ class RequestService:
             RequestSummary(
                 id=r.id,
                 reference=r.reference,
+                ticket_ref=r.ticket_ref,
                 flux_type=r.flux_type_label,
                 demandeur=f"{r.dem_prenom} {r.dem_nom.upper()}",
                 statut=r.statut,
@@ -316,6 +318,11 @@ class RequestService:
             )
         req.validations.append(v)
         req.statut = ok_status if data.decision == Decision.validee else ko_status
+
+        if req.statut == Statut.validee:
+            from app.services.oline_service import OlineService
+            OlineService.sync_ticket_on_final_validation(db, req, request)
+
         try:
             db.flush()
         except IntegrityError:

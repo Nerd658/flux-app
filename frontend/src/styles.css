@@ -740,6 +740,35 @@ body:has(.action-bar) .toasts { bottom: 96px; } /* au-dessus de la barre d'actio
 .status-up { border-color: var(--success-line); background: var(--success-bg); color: var(--success); }
 .status-down { border-color: var(--danger-line); background: var(--danger-bg); color: var(--danger); }
 
+.ticket-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--r-pill);
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  line-height: 20px;
+  white-space: nowrap;
+}
+.ticket-pill-sm {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  line-height: 14px;
+}
+
 .mini-progress { display: inline-flex; gap: 4px; }
 .mini-progress i { width: 22px; height: 6px; border-radius: 3px; background: var(--line); }
 .mini-progress i.done { background: #12b76a; }

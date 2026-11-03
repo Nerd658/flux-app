@@ -137,6 +137,7 @@ class FluxRequest(Base):
     date_fin: Mapped[date | None] = mapped_column(Date)          # obligatoire si temporaire
 
     statut: Mapped[Statut] = mapped_column(Enum(Statut), default=Statut.soumise, index=True)
+    ticket_ref: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     content_hash: Mapped[str] = mapped_column(String(64))         # SHA-256 du contenu canonique
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

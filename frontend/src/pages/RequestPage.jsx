@@ -195,7 +195,17 @@ export default function RequestPage() {
         mono
         kicker={<Link className="hero-back" to={back}><IconArrowLeft width={15} height={15} />{backLabel}</Link>}
         title={req.reference}
-        lead={<><StatusBadge statut={req.statut} /><span>Type {req.flux_type}, soumise le {formatDateTime(req.created_at)} par {req.demandeur.prenom} {req.demandeur.nom.toUpperCase()}</span></>}
+        lead={
+          <>
+            <StatusBadge statut={req.statut} />
+            {req.ticket_ref && (
+              <span className="ticket-pill" title="Référence du ticket Oline (iTop)">
+                Ticket Oline : {req.ticket_ref}
+              </span>
+            )}
+            <span>Type {req.flux_type}, soumise le {formatDateTime(req.created_at)} par {req.demandeur.prenom} {req.demandeur.nom.toUpperCase()}</span>
+          </>
+        }
         actions={req.statut === "validee" && (
           <button className="btn btn-primary" onClick={pdf}><IconDownload width={18} height={18} />Télécharger le PDF</button>
         )}

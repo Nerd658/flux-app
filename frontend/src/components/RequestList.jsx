@@ -32,7 +32,10 @@ export default function RequestList({ rows, empty, emptyHint, emptyAction, showD
           {rows.map((r) => (
             // Ligne entièrement cliquable, et accessible au clavier via le lien de référence
             <tr key={r.id} onClick={() => navigate(`/demandes/${r.id}`)}>
-              <td><a className="ref ip-cell" href={`/demandes/${r.id}`} onClick={(e) => { e.preventDefault(); navigate(`/demandes/${r.id}`); }}>{r.reference}</a></td>
+              <td>
+                <a className="ref ip-cell" href={`/demandes/${r.id}`} onClick={(e) => { e.preventDefault(); navigate(`/demandes/${r.id}`); }}>{r.reference}</a>
+                {r.ticket_ref && <div><span className="ticket-pill-sm" title={`Ticket Oline : ${r.ticket_ref}`}>{r.ticket_ref}</span></div>}
+              </td>
               <td>{r.flux_type}</td>
               {showDemandeur && <td>{r.demandeur}</td>}
               <td className="r num">{r.nb_lignes}</td>

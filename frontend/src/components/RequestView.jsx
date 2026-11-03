@@ -30,6 +30,13 @@ export default function RequestView({ req }) {
           <strong>{tmp ? `${formatDate(req.date_debut)} au ${formatDate(req.date_fin)}` : `À partir du ${formatDate(req.date_debut)}`}</strong>
           <span>{tmp ? `${daysBetween(req.date_debut, req.date_fin)} jours` : "Sans date de fin"}</span>
         </div>
+        {req.ticket_ref && (
+          <div className="person">
+            <span className="person-title">Ticket Oline</span>
+            <strong className="num">{req.ticket_ref}</strong>
+            <span>Créé automatiquement</span>
+          </div>
+        )}
       </section>
 
       <section>

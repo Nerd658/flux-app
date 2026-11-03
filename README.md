@@ -12,12 +12,19 @@ python -m venv .venv && source .venv/bin/activate        # Linux/macOS (.venv\Sc
 pip install -r requirements.txt
 python -m app.seed                                     # tables + données initiales + comptes fictifs
 uvicorn app.main:app --host 127.0.0.1 --port 8000
-pytest -q tests                                        # 21 tests automatisés
+pytest -q tests                                        # 27 tests automatisés
 
 # 3. Frontend
 cd frontend
 npm install
 npm run build                                          # build de production
+```
+
+Configuration Oline (iTop) dans `backend/.env` :
+```ini
+OLINE_URL=https://<votre-serveur-itop-oline>/webservices/rest.php
+OLINE_API_KEY=<token_ou_cle_api_base64>
+OLINE_VERIFY_SSL=true
 ```
 
 Comptes fictifs de développement (mot de passe applicatif = `SEED_PASSWORD`) :
