@@ -48,7 +48,10 @@ def _seed_users(db: Session) -> None:
     ph = PasswordHasher()
     created = False
     for cuid, email, nom, prenom, tel, dept, role in FAKE_USERS:
-        if db.scalar(select(User).where(User.cuid == cuid)):
+        existing = db.scalar(select(User).where(User.cuid == cuid))
+        if existing:
+            if settings.seed_password:
+                existing.password_hash = ph.hash(settings.seed_password)
             continue
         db.add(User(cuid=cuid, email=email, nom=nom, prenom=prenom, telephone=tel,
                     departement=dept, role=role, statut_pro=StatutProfessionnel.employe,

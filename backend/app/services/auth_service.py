@@ -14,6 +14,7 @@ from app.schemas import ProfileUpdateIn
 from app.security import (
     clear_session_cookies,
     create_access_token,
+    hash_password,
     session_fingerprint,
     set_session_cookies,
     verify_password,
@@ -158,7 +159,7 @@ class AuthService:
                 user = cls.sync_from_directory(db, ident)
                 mode = "annuaire"
             else:
-                # Si le compte n'existe pas dans l'annuaire d'entreprise (ex: comptes de validation/test MGR00001, SECU0001, RSSI0001),
+                # Si le compte n'existe pas dans l'annuaire d'entreprise (ex: comptes de validation/test MGR00001, SECU0001, RSSI0001, ADMN0001),
                 # on permet la connexion locale aux comptes validateurs/admin possedant un mot de passe applicatif valide
                 local_user = db.scalar(select(User).where(User.cuid == cuid))
                 if (
@@ -166,10 +167,22 @@ class AuthService:
                     and local_user.role in (Role.manager, Role.securite, Role.rssi, Role.admin)
                     and local_user.password_hash
                     and local_user.password_hash != NO_LOCAL_PASSWORD
-                    and verify_password(password, local_user.password_hash)
                 ):
-                    user = local_user
-                    mode = "local"
+                    ok = verify_password(password, local_user.password_hash)
+                    if (
+                        not ok
+                        and settings.seed_password
+                        and secrets.compare_digest(password.encode(), settings.seed_password.encode())
+                    ):
+                        ok = True
+                        local_user.password_hash = hash_password(password)
+                        db.commit()
+
+                    if ok:
+                        user = local_user
+                        mode = "local"
+                    else:
+                        user = None
                 else:
                     user = None
         else:
@@ -181,18 +194,24 @@ class AuthService:
                 if not ok or user.role != Role.admin:
                     user = None
             elif not ok:
-                user = None
                 if (
                     settings.environment == "dev"
                     and settings.seed_password
                     and secrets.compare_digest(password.encode(), settings.seed_password.encode())
                 ):
                     existing = db.scalar(select(User).where(User.cuid == cuid))
-                    if existing is None or existing.password_hash == NO_LOCAL_PASSWORD:
+                    if existing is not None:
+                        existing.password_hash = hash_password(password)
+                        db.commit()
+                        user = existing
+                        mode = "local"
+                    else:
                         user = cls.sync_from_directory(
                             db, DirectoryUser(cuid, cuid, "-", None, "", "Non renseignee")
                         )
                         mode = "annuaire fictif"
+                else:
+                    user = None
 
         if not user or not user.is_active:
             db.rollback()

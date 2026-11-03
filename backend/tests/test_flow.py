@@ -14,10 +14,12 @@ os.environ.update({
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+from sqlalchemy import select
+
 from app import seed  # noqa: E402
 from app.database import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import FluxLine, FluxRequest  # noqa: E402
+from app.models import FluxLine, FluxRequest, User  # noqa: E402
 
 PWD = "Test-Pass-123"
 
@@ -285,6 +287,15 @@ def test_directory_login(monkeypatch):
     assert v["role"] == "admin" and v["email"] == "ines.kone@fluxapp.bf"
 
     assert login(TestClient(app), "DEMD0001", PWD).status_code == 401      # mot de passe local refusé
+    assert login(TestClient(app), "MGR00001", PWD).status_code == 200      # validateur hors AD autorisé en local
+
+    # Resynchronisation automatique si le hash en base etait perime mais SEED_PASSWORD correspond
+    with SessionLocal() as db_session:
+        mgr = db_session.scalar(select(User).where(User.cuid == "MGR00001"))
+        mgr.password_hash = "argon2id$v=19$m=65536,t=3,p=4$badhash$badhash"
+        db_session.commit()
+    assert login(TestClient(app), "MGR00001", PWD).status_code == 200      # synchronise et accepte
+
     assert login(TestClient(app), "ADMN0001", PWD).status_code == 200      # compte de secours
 
     uid = next(u["id"] for u in adm.get("/api/admin/users").json() if u["cuid"] == "NEWU0001")

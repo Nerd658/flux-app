@@ -1,17 +1,27 @@
-[2026-11-03] - Remplacement de crypto.randomUUID par un generateur d'identifiant universel
+[2026-11-03] - Resynchronisation des comptes de validation et fallback local en mode AD
 
 What changed:
-- frontend/src/components/ui.jsx :
-  * 'crypto.randomUUID()' a ete remplace par une fonction generateur d'ID compatible tout contexte ('uid()').
-  * Utilise 'crypto.randomUUID()' si disponible, sinon bascule sur un timestamp + sequenceur + aleatoire unique.
+- backend/app/seed.py :
+  * Mise a jour automatique du hash de mot de passe des comptes de test existants (FAKE_USERS) lorsque SEED_PASSWORD est configure.
+- backend/app/services/auth_service.py :
+  * En mode annuaire (AD / LDAP), les comptes validateurs et administrateurs (Role.manager, Role.securite, Role.rssi, Role.admin) beneficient d'un mecanisme de resynchronisation automatique si leur hash en base etait perime ou issu d'un premier demarrage aleatoire, des lors que le mot de passe soumis correspond a SEED_PASSWORD.
+  * En mode developpement local, resynchronisation et connexion directe des comptes existants avec SEED_PASSWORD.
+- backend/tests/test_flow.py :
+  * Ajout de cas de test dedies a la connexion locale d'un validateur (MGR00001) et a la resynchronisation automatique en mode annuaire.
 
 Why:
-- 'crypto.randomUUID' n'est disponible dans les navigateurs que dans un 'Secure Context' (HTTPS ou localhost).
-- Lorsqu'une application est accedee en simple HTTP sur une adresse IP directe, 'crypto.randomUUID' est 'undefined' et provoque une erreur 'TypeError: crypto.randomUUID is not a function' lors de l'affichage des notifications toast (ex. lors de la validation du profil).
+- En mode Active Directory, les comptes demandeurs (ex: LHGL6650) s'authentifient sur l'annuaire d'entreprise.
+- Les comptes validateurs applicatifs (MGR00001, SECU0001, RSSI0001, ADMN0001) n'existant pas dans l'AD de l'entreprise, ils s'authentifient en local avec leur mot de passe applicatif.
+- Si le conteneur backend avait demarre avant la definition de SEED_PASSWORD dans backend/.env, un hash aleatoire avait ete enregistre en base et n'etait jamais mis a jour, bloquant la connexion des validateurs hors AD.
 
 Files affected:
-- frontend/src/components/ui.jsx - Generateur d'ID compatible HTTP direct par IP
+- backend/app/seed.py - Synchronisation du hash de mot de passe des utilisateurs seed
+- backend/app/services/auth_service.py - Fallback et synchronisation automatique avec SEED_PASSWORD
+- backend/tests/test_flow.py - Validation automatisee de la connexion et de la resynchronisation
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
 - None.
+
+Notes for review:
+- Sur le serveur distant, verifier que SEED_PASSWORD=<mot_de_passe> est bien present dans backend/.env, executer git pull, puis docker compose exec backend python -m app.seed ou redemarrer le conteneur backend.
