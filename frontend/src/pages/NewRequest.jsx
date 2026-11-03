@@ -47,8 +47,11 @@ function Select({ value, onChange, options, placeholder = "Choisir…", invalid 
 }
 
 // Validation côté client : confort de saisie uniquement, le serveur reste l'autorité
-function validateInfos(f) {
+function validateInfos(f, selectedDir) {
   const e = {};
+  if (selectedDir?.managers?.length > 1 && !f.manager_cuid) {
+    e.manager_cuid = "Veuillez sélectionner votre responsable de département";
+  }
   if (!f.manager.nom.trim()) e.mgr_nom = "Nom requis";
   if (!f.manager.prenom.trim()) e.mgr_prenom = "Prénom requis";
   if (!EMAIL.test(f.manager.email.trim())) e.mgr_email = "Email invalide";
@@ -70,6 +73,7 @@ function fromRefused(src, ref) {
   return {
     flux_type_id: type ? type.id : null,
     manager: { ...src.manager },
+    manager_cuid: src.manager_cuid || null,
     departement: src.departement,
     periode: src.periode,
     date_debut: keep(src.date_debut),
@@ -99,6 +103,7 @@ export default function NewRequest() {
   const [form, setForm] = useState({
     flux_type_id: null,
     manager: { nom: "", prenom: "", email: "", telephone: "" },
+    manager_cuid: null,
     departement: "",               // aucune direction imposée : le demandeur choisit
     periode: "temporaire",
     date_debut: "",                // aucune date imposée : le demandeur choisit
@@ -129,11 +134,13 @@ export default function NewRequest() {
     if (step === 2 && !form.lines.some((l) => l._id === openId) && form.lines.length) setOpenId(form.lines[0]._id);
   }, [step, form.lines, openId]);
 
+  const selectedDir = ref?.directions?.find((d) => d.libelle === form.departement);
+
   // Une fois l'étape tentée, les messages d'erreur suivent la saisie en direct
   useEffect(() => {
-    if (step === 1 && tried[1]) setErrors(validateInfos(form));
+    if (step === 1 && tried[1]) setErrors(validateInfos(form, selectedDir));
     if (step === 2 && tried[2]) setErrors(validateLines(form.lines));
-  }, [form, step, tried]);
+  }, [form, step, tried, selectedDir]);
 
   if (!ref) return error ? <ErrorBanner title="Chargement impossible" message={error} /> : <Loading />;
 
@@ -166,11 +173,12 @@ export default function NewRequest() {
   // Corps envoyé à l'API : uniquement les champs attendus (le backend refuse tout champ en trop)
   const payload = () => {
     const selDir = ref?.directions?.find((d) => d.libelle === form.departement);
+    const mgrCuid = form.manager_cuid || (selDir?.managers?.length === 1 ? selDir.managers[0].cuid : selDir?.manager_cuid) || null;
     return {
       flux_type_id: form.flux_type_id,
       manager: form.manager,
       departement: form.departement,
-      manager_cuid: selDir?.manager_cuid || form.manager_cuid || null,
+      manager_cuid: mgrCuid,
       periode: form.periode,
       date_debut: form.date_debut,
       date_fin: form.periode === "temporaire" ? form.date_fin || null : null,
@@ -220,7 +228,7 @@ export default function NewRequest() {
     setError("");
     if (step === 1) {
       setTried((t) => ({ ...t, 1: true }));
-      const e = validateInfos(form);
+      const e = validateInfos(form, selectedDir);
       setErrors(e);
       if (Object.keys(e).length) return;
     }
@@ -359,9 +367,29 @@ export default function NewRequest() {
                              inputPlaceholder="Saisir le nom de la direction"
                              onChange={(v) => {
                                const dir = ref.directions.find((d) => d.libelle === v);
-                               set({ departement: v });
-                               if (dir?.manager_cuid && !form.manager.nom) {
-                                 setManager("nom", dir.manager_cuid);
+                               if (dir?.managers?.length === 1) {
+                                 const m = dir.managers[0];
+                                 set({
+                                   departement: v,
+                                   manager_cuid: m.cuid,
+                                   manager: {
+                                     nom: m.nom,
+                                     prenom: m.prenom,
+                                     email: m.email,
+                                     telephone: m.telephone || form.manager.telephone,
+                                   },
+                                 });
+                               } else if (dir?.managers?.length > 1) {
+                                 set({
+                                   departement: v,
+                                   manager_cuid: "",
+                                   manager: { nom: "", prenom: "", email: "", telephone: "" },
+                                 });
+                               } else {
+                                 set({
+                                   departement: v,
+                                   manager_cuid: dir?.manager_cuid || null,
+                                 });
                                }
                              }} onAdd={addDirection} />
             </Field>
@@ -370,14 +398,51 @@ export default function NewRequest() {
           <section className="card">
             <div className="card-heading">
               <div>
-                <h2>Manager</h2>
+                <h2>Responsable de département (Manager)</h2>
                 <p>
-                  {ref.directions.find((d) => d.libelle === form.departement)?.manager_cuid
-                    ? `Responsable de département désigné : ${ref.directions.find((d) => d.libelle === form.departement).manager_cuid}`
-                    : "Votre responsable hiérarchique de département."}
+                  {selectedDir?.managers?.length > 1
+                    ? "Plusieurs responsables sont habilités pour votre direction. Choisissez le vôtre pour la validation N1."
+                    : selectedDir?.managers?.length === 1
+                    ? `Responsable désigné pour la direction ${selectedDir.libelle}.`
+                    : "Votre responsable hiérarchique de département pour la validation de Niveau 1."}
                 </p>
               </div>
             </div>
+
+            {selectedDir?.managers?.length > 1 && (
+              <Field group label="Responsable habilité" error={ee.manager_cuid} className="narrow-field"
+                     hint="La validation N1 lui sera directement adressée.">
+                <select className={`text-input select-input ${ee.manager_cuid ? "invalid" : ""}`}
+                        value={form.manager_cuid || ""}
+                        onChange={(e) => {
+                          const chosen = selectedDir.managers.find((m) => m.cuid === e.target.value);
+                          if (chosen) {
+                            set({
+                              manager_cuid: chosen.cuid,
+                              manager: {
+                                nom: chosen.nom,
+                                prenom: chosen.prenom,
+                                email: chosen.email,
+                                telephone: chosen.telephone || form.manager.telephone,
+                              },
+                            });
+                          } else {
+                            set({
+                              manager_cuid: "",
+                              manager: { nom: "", prenom: "", email: "", telephone: "" },
+                            });
+                          }
+                        }}>
+                  <option value="" disabled>Choisir votre responsable…</option>
+                  {selectedDir.managers.map((m) => (
+                    <option key={m.cuid} value={m.cuid}>
+                      {m.prenom} {m.nom.toUpperCase()} ({m.cuid}) - {m.email}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+
             <div className="grid-4">
               <Field label="Nom" error={ee.mgr_nom}><input className="text-input" maxLength={100} placeholder="Saisir le nom" value={form.manager.nom} onChange={(e) => setManager("nom", e.target.value)} /></Field>
               <Field label="Prénom" error={ee.mgr_prenom}><input className="text-input" maxLength={100} placeholder="Saisir le prénom" value={form.manager.prenom} onChange={(e) => setManager("prenom", e.target.value)} /></Field>

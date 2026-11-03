@@ -8,7 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.audit import audit
 from app.models import Country, Direction, FluxLine, FluxRequest, FluxType, User, Zone
-from app.schemas import FluxRequestIn, LabelOut, LabelUsageOut, ReferentielsOut
+from app.schemas import (
+    DirectionOut,
+    FluxRequestIn,
+    LabelOut,
+    LabelUsageOut,
+    ManagerInfoOut,
+    ReferentielsOut,
+)
 
 MAX_ITEMS_PER_LIST = 200
 
@@ -72,16 +79,79 @@ class ReferentialService:
             stmt = stmt.where(model.id != exclude_id)
         return db.scalar(stmt) is not None
 
+    @staticmethod
+    def _normalize_manager_cuid(raw: str | None) -> str | None:
+        if not raw or not raw.strip():
+            return None
+        cuids = [c.strip().upper() for c in raw.replace(";", ",").split(",") if c.strip()]
+        return ", ".join(dict.fromkeys(cuids)) if cuids else None
+
+    @classmethod
+    def _resolve_managers_map(cls, db: Session, directions: list[Direction]) -> dict[int, list[ManagerInfoOut]]:
+        all_cuids = set()
+        for d in directions:
+            all_cuids.update(d.authorized_managers)
+        if not all_cuids:
+            return {}
+
+        users = db.scalars(
+            select(User).where(User.cuid.in_(all_cuids), User.is_active.is_(True))
+        ).all()
+        user_by_cuid = {u.cuid: u for u in users}
+
+        result: dict[int, list[ManagerInfoOut]] = {}
+        for d in directions:
+            mgrs: list[ManagerInfoOut] = []
+            for cuid in d.authorized_managers:
+                u = user_by_cuid.get(cuid)
+                if u:
+                    mgrs.append(
+                        ManagerInfoOut(
+                            cuid=u.cuid,
+                            nom=u.nom,
+                            prenom=u.prenom,
+                            email=u.email,
+                            telephone=u.telephone,
+                            role=u.role.value if hasattr(u.role, "value") else str(u.role),
+                        )
+                    )
+                else:
+                    mgrs.append(
+                        ManagerInfoOut(
+                            cuid=cuid,
+                            nom=cuid,
+                            prenom="",
+                            email=f"{cuid.lower()}@orange.com",
+                            telephone="",
+                            role="manager",
+                        )
+                    )
+            result[d.id] = mgrs
+        return result
+
     @classmethod
     def list_all(cls, db: Session) -> ReferentielsOut:
-        def fetch_labels(model):
-            return list(db.scalars(select(model).order_by(model.libelle)))
+        flux_types = list(db.scalars(select(FluxType).order_by(FluxType.libelle)))
+        directions_db = list(db.scalars(select(Direction).order_by(Direction.libelle)))
+        zones = list(db.scalars(select(Zone).order_by(Zone.libelle)))
+        pays = list(db.scalars(select(Country).order_by(Country.libelle)))
+
+        mgr_map = cls._resolve_managers_map(db, directions_db)
+        directions_out = [
+            DirectionOut(
+                id=d.id,
+                libelle=d.libelle,
+                manager_cuid=d.manager_cuid,
+                managers=mgr_map.get(d.id, []),
+            )
+            for d in directions_db
+        ]
 
         return ReferentielsOut(
-            flux_types=fetch_labels(FluxType),
-            directions=fetch_labels(Direction),
-            zones=fetch_labels(Zone),
-            pays=fetch_labels(Country),
+            flux_types=flux_types,
+            directions=directions_out,
+            zones=zones,
+            pays=pays,
         )
 
     @classmethod
@@ -96,12 +166,14 @@ class ReferentialService:
                     for item in items
                 ]
             elif kind == "directions":
+                mgr_map = cls._resolve_managers_map(db, items)
                 out[kind] = [
                     LabelUsageOut(
                         id=item.id,
                         libelle=item.libelle,
                         usage=usage_map.get(item.libelle, 0),
                         manager_cuid=item.manager_cuid,
+                        managers=mgr_map.get(item.id, []),
                     )
                     for item in items
                 ]
@@ -148,13 +220,15 @@ class ReferentialService:
         definition = cls.get_definition(kind)
         extra = {}
         if kind == "directions" and manager_cuid:
-            extra["manager_cuid"] = manager_cuid.strip().upper()
+            extra["manager_cuid"] = cls._normalize_manager_cuid(manager_cuid)
         item = cls.add_label(db, definition.model, libelle, user, request, "REFERENTIAL_CREATED", **extra)
+        mgr_map = cls._resolve_managers_map(db, [item]) if kind == "directions" else {}
         return LabelUsageOut(
             id=item.id,
             libelle=item.libelle,
             usage=0,
             manager_cuid=getattr(item, "manager_cuid", None),
+            managers=mgr_map.get(item.id, []),
         )
 
     @classmethod
@@ -171,7 +245,7 @@ class ReferentialService:
         old_libelle = item.libelle
         item.libelle = libelle
         if kind == "directions":
-            item.manager_cuid = manager_cuid.strip().upper() if manager_cuid and manager_cuid.strip() else None
+            item.manager_cuid = cls._normalize_manager_cuid(manager_cuid)
 
         usage_map = definition.compute_usage(db)
         usage = usage_map.get(item.id if kind == "flux-types" else item.libelle, 0)
@@ -184,11 +258,13 @@ class ReferentialService:
             request=request,
             details={"ancien": old_libelle, "nouveau": item.libelle, "manager_cuid": getattr(item, "manager_cuid", None)},
         )
+        mgr_map = cls._resolve_managers_map(db, [item]) if kind == "directions" else {}
         return LabelUsageOut(
             id=item.id,
             libelle=item.libelle,
             usage=usage,
             manager_cuid=getattr(item, "manager_cuid", None),
+            managers=mgr_map.get(item.id, []),
         )
 
     @classmethod

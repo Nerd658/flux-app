@@ -47,5 +47,12 @@ def add_direction(
     """Ajout d'une direction, partagee ensuite avec tous les utilisateurs."""
     extra = {}
     if data.manager_cuid:
-        extra["manager_cuid"] = data.manager_cuid.strip().upper()
-    return ReferentialService.add_label(db, Direction, data.libelle, user, request, "DIRECTION_CREATED", **extra)
+        extra["manager_cuid"] = ReferentialService._normalize_manager_cuid(data.manager_cuid)
+    item = ReferentialService.add_label(db, Direction, data.libelle, user, request, "DIRECTION_CREATED", **extra)
+    mgr_map = ReferentialService._resolve_managers_map(db, [item])
+    return DirectionOut(
+        id=item.id,
+        libelle=item.libelle,
+        manager_cuid=item.manager_cuid,
+        managers=mgr_map.get(item.id, []),
+    )

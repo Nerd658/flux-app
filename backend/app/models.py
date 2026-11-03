@@ -88,9 +88,15 @@ class Direction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     libelle: Mapped[str] = mapped_column(String(150), unique=True)
-    manager_cuid: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    manager_cuid: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    @property
+    def authorized_managers(self) -> list[str]:
+        if not self.manager_cuid:
+            return []
+        return [c.strip().upper() for c in self.manager_cuid.replace(";", ",").split(",") if c.strip()]
 
 
 class Zone(Base):

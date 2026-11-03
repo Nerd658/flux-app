@@ -1,37 +1,46 @@
-[2026-11-03] - Portail de verification d authenticite et d integrite par reference ou numero de ticket
+[2026-11-03] - Gestion multi-managers par direction et verrouillage strict anti-contournement
 
 What changed:
-- Creation de l'API de verification publique sans authentification prealable obligatoire (backend/app/routers/public.py) :
-  * Route GET /api/public/verify?q=... permettant la recherche indifferemment par reference officielle (ex. DOF-2026-000001) ou par numero de ticket Oline (ex. R-211299).
-  * Reponse 404 explicite si la reference ou le ticket n'existe pas ("Aucune demande trouvée pour cette référence ou ce numéro de ticket.").
-  * Verification cryptographique complete a la volee : recalcul du SHA-256 du contenu et verification mathematique de chaque signature Ed25519 avec les cles publiques archivees des validateurs.
-  * Restitution securisee des donnees utiles pour l'ingenieur d'exploitation pare-feu : statut de certification, chaine des 3 validateurs horodatee avec empreintes de cles, et tableau des regles de flux approuvees.
-- Ajout de la page front-end de verification dediee (frontend/src/pages/Verify.jsx) :
-  * Barre de recherche ergonomique avec support direct de l'URL pre-remplie (?q=...).
-  * Bandeau d'authenticite vert (certifie conforme), rouge (sceau rompu ou signatures invalides) ou orange (demande non finalisee).
-  * Affichage des cartes des 3 validateurs (Manager, Technique, RSSI) et des regles reseau autorisees.
-  * Si la demande n'existe pas, rien n'est affiche en dehors du message de refus clair.
-  * Accessible publiquement depuis l'ecran de connexion (/connexion) et integree dans le menu lateral pour les utilisateurs authentifies.
-- Mise a jour du document PDF officiel (backend/app/pdf.py) pour mentionner la reference de verification (/verifier) et le ticket Oline en pied de page.
-- Suite de tests automatises (backend/tests/test_public_verify.py) : 29 tests au total.
+- Modele de donnees et migration (backend/app/models.py) :
+  * Extension du champ manager_cuid de la table directions de VARCHAR(32) a VARCHAR(255).
+  * Ajout de la propriete helper Direction.authorized_managers pour parser et normaliser les CUIDs multiples.
+- Schemas et services backend (backend/app/schemas.py, backend/app/services/referential_service.py) :
+  * Creation du schema ManagerInfoOut et enrichissement de DirectionOut et LabelUsageOut avec la liste des managers resolus.
+  * Resolution automatique des identites et coordonnees des managers (nom, prenom, email, telephone) pour chaque direction.
+  * Validation assouplie de manager_cuid pour accepter les listes de CUIDs separes par des virgules ou points-virgules.
+- Verrouillage anti-contournement a la soumission (backend/app/services/request_service.py) :
+  * Ajout de _resolve_and_validate_manager executant 4 verifications critiques cote serveur :
+    1. Si la direction a des managers assignes, controle strict que le manager selectionne fait partie de la liste autorisee.
+    2. Si plusieurs managers sont assignes a la direction, interdiction de soumettre sans selection explicite.
+    3. Rejet strict si le demandeur tente de s'auto-designer comme manager (anti-auto-validation).
+    4. Rejet strict si le compte selectionne ne possede pas le role manager (Role.manager) ou admin.
+  * Auto-remplissage garanti des coordonnees officielles du manager depuis la base de donnees pour eviter l'usurpation de contacts.
+- Interface d'administration des referentiels (frontend/src/pages/admin/Referentials.jsx) :
+  * Support de la saisie de plusieurs CUIDs de managers par direction (ex: MGR00001, MGR00002).
+  * Affichage de la liste des managers associes avec leurs noms complets dans le tableau.
+- Formulaire de demande (frontend/src/pages/NewRequest.jsx) :
+  * Si la direction possede 1 manager : pre-remplissage et assignation automatiques.
+  * Si la direction possede plusieurs managers (ex: DRSI) : affichage dynamique d'un menu deroulant de selection du responsable habilité.
+  * Mise a jour automatique et pre-remplissage des champs du manager selectionne.
+- Suite de tests unitaires et d'integration (backend/tests/test_multi_managers.py) :
+  * 5 nouveaux tests validant la restitution multi-managers, l'acceptation des managers autorises, et le rejet systematique des contournements (CUID non autorise, demandeur lambda, auto-designation). Total suite : 34 tests passants (0 echec).
 
 Why:
-- Permettre aux ingenieurs reseau et exploitants de valider l'authenticite et l'integrite absolue d'une demande de flux avant toute application sur le pare-feu, directement avec le numero de ticket Oline ou la reference du document.
+- Repondre aux cas reels d'entreprises ou une direction regroupe plusieurs departements avec des chefs differents, tout en garantissant l'hermeticite absolue du processus de validation contre toute collusion ou tentative de contournement.
 
 Files affected:
-- backend/app/routers/public.py - Endpoint public de verification cryptographique
-- backend/app/schemas.py - Schemas PublicSignatureOut et PublicVerifyOut
-- backend/app/main.py - Enregistrement du router public
-- backend/app/pdf.py - Pied de page PDF avec ticket et lien de verification
-- backend/tests/test_public_verify.py - Tests unitaires de la recherche et verification publique
-- frontend/src/pages/Verify.jsx - Composant de la page de verification
-- frontend/src/pages/Login.jsx - Lien d'acces direct a la verification depuis la connexion
-- frontend/src/App.jsx - Routes et navigation pour le portail de verification
-- frontend/src/api.js - Fonction api.publicVerify
-- frontend/src/styles.css - Styles du portail de verification
+- backend/app/models.py - Extension manager_cuid a 255 caracteres et helper authorized_managers
+- backend/app/schemas.py - ManagerInfoOut, validation regex multi-CUIDs
+- backend/app/services/referential_service.py - Resolution des comptes managers par direction
+- backend/app/services/request_service.py - Controles serveur anti-contournement et assignation
+- backend/app/routers/referentiels.py - Normalisation des CUIDs a la creation de direction
+- backend/tests/test_multi_managers.py - Tests automatises multi-managers et anti-bypass
+- frontend/src/pages/admin/Referentials.jsx - Interface admin multi-CUIDs
+- frontend/src/pages/NewRequest.jsx - Selection dynamique et pre-remplissage du responsable
 
 Breaking changes:
 - None
 
 Notes for review:
-- Tester en saisissant une reference valide ou un ticket Oline, et verifier le message d'erreur si la reference est inexistante.
+- Verifier dans /admin/referentiels qu'une direction peut recevoir plusieurs CUIDs separes par une virgule.
+- Verifier dans /demandes/nouvelle que le menu deroulant du responsable apparait bien pour les directions multi-managers.

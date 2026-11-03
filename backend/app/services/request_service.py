@@ -133,16 +133,65 @@ class RequestService:
         ]
 
     @classmethod
+    def _resolve_and_validate_manager(
+        cls, db: Session, direction_label: str, raw_cuid: str | None, current_user: User
+    ) -> tuple[str | None, User | None]:
+        direction = db.scalar(select(Direction).where(Direction.libelle == direction_label))
+        authorized = direction.authorized_managers if direction else []
+
+        selected_cuid = raw_cuid.strip().upper() if raw_cuid and raw_cuid.strip() else None
+
+        if authorized:
+            if not selected_cuid:
+                if len(authorized) == 1:
+                    selected_cuid = authorized[0]
+                else:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST,
+                        f"Veuillez sélectionner votre responsable parmi ceux autorisés pour la direction {direction_label}",
+                    )
+            elif selected_cuid not in authorized:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Le responsable {selected_cuid} n'est pas habilité pour la direction {direction_label}",
+                )
+
+        mgr_user = None
+        if selected_cuid:
+            if selected_cuid == current_user.cuid:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Vous ne pouvez pas vous désigner vous-même comme manager",
+                )
+            mgr_user = db.scalar(select(User).where(User.cuid == selected_cuid, User.is_active.is_(True)))
+            if mgr_user and mgr_user.role not in (Role.manager, Role.admin):
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Le compte {selected_cuid} n'a pas les droits de validation manager",
+                )
+
+        return selected_cuid, mgr_user
+
+    @classmethod
     def preview(cls, db: Session, data: FluxRequestIn, user: User) -> RequestDetail:
         flux_label = ReferentialService.validate_request_labels(db, data)
-        direction = db.scalar(select(Direction).where(Direction.libelle == data.departement))
-        mgr_cuid = direction.manager_cuid if direction and direction.manager_cuid else data.manager_cuid
+        mgr_cuid, mgr_user = cls._resolve_and_validate_manager(db, data.departement, data.manager_cuid, user)
+        mgr_info = (
+            PersonneOut(
+                nom=mgr_user.nom,
+                prenom=mgr_user.prenom,
+                email=mgr_user.email,
+                telephone=mgr_user.telephone or data.manager.telephone,
+            )
+            if mgr_user and mgr_user.nom and mgr_user.nom != mgr_user.cuid
+            else PersonneOut(**data.manager.model_dump())
+        )
         return RequestDetail(
             flux_type=flux_label,
             demandeur=PersonneOut(
                 nom=user.nom, prenom=user.prenom, email=user.email, telephone=user.telephone
             ),
-            manager=PersonneOut(**data.manager.model_dump()),
+            manager=mgr_info,
             manager_cuid=mgr_cuid,
             departement=data.departement,
             periode=data.periode,
@@ -154,10 +203,11 @@ class RequestService:
     @classmethod
     def submit(cls, db: Session, data: FluxRequestIn, user: User, request: Request) -> RequestDetail:
         flux_label = ReferentialService.validate_request_labels(db, data)
-        direction = db.scalar(select(Direction).where(Direction.libelle == data.departement))
-        mgr_cuid = direction.manager_cuid if direction and direction.manager_cuid else data.manager_cuid
-        if mgr_cuid:
-            mgr_cuid = mgr_cuid.strip().upper()
+        mgr_cuid, mgr_user = cls._resolve_and_validate_manager(db, data.departement, data.manager_cuid, user)
+        mgr_nom = mgr_user.nom if mgr_user and mgr_user.nom and mgr_user.nom != mgr_user.cuid else data.manager.nom
+        mgr_prenom = mgr_user.prenom if mgr_user and mgr_user.prenom and mgr_user.prenom != "-" else data.manager.prenom
+        mgr_email = mgr_user.email if mgr_user and mgr_user.email and not mgr_user.email.endswith("@pending.orange.bf") else str(data.manager.email)
+        mgr_tel = mgr_user.telephone if mgr_user and mgr_user.telephone else data.manager.telephone
 
         req = FluxRequest(
             reference=f"TMP-{secrets.token_hex(8)}",
@@ -170,10 +220,10 @@ class RequestService:
             dem_telephone=user.telephone,
             departement=data.departement,
             manager_cuid=mgr_cuid,
-            mgr_nom=data.manager.nom,
-            mgr_prenom=data.manager.prenom,
-            mgr_email=str(data.manager.email),
-            mgr_telephone=data.manager.telephone,
+            mgr_nom=mgr_nom,
+            mgr_prenom=mgr_prenom,
+            mgr_email=mgr_email,
+            mgr_telephone=mgr_tel,
             periode=data.periode,
             date_debut=data.date_debut,
             date_fin=data.date_fin,

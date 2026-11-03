@@ -60,11 +60,21 @@ class LabelOut(BaseModel):
     libelle: str
 
 
+class ManagerInfoOut(BaseModel):
+    cuid: str
+    nom: str
+    prenom: str
+    email: str
+    telephone: str
+    role: str = "manager"
+
+
 class DirectionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     libelle: str
     manager_cuid: str | None = None
+    managers: list[ManagerInfoOut] = []
 
 
 class ReferentielsOut(BaseModel):
@@ -81,7 +91,7 @@ class FluxTypeIn(StrictModel):
 
 class DirectionIn(StrictModel):
     libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()]+$")
-    manager_cuid: str | None = Field(default=None, max_length=32, pattern=r"^[A-Za-z0-9]*$")
+    manager_cuid: str | None = Field(default=None, max_length=255, pattern=r"^[A-Za-z0-9,;\s]*$")
 
 
 # ---------- Demande ----------
@@ -369,7 +379,7 @@ class UserStatusIn(StrictModel):
 class LabelIn(StrictModel):
     """Libellé d'un référentiel (avec champ optionnel manager_cuid pour les directions)."""
     libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()]+$")
-    manager_cuid: str | None = Field(default=None, max_length=32, pattern=r"^[A-Za-z0-9]*$")
+    manager_cuid: str | None = Field(default=None, max_length=255, pattern=r"^[A-Za-z0-9,;\s]*$")
 
 
 class LabelUsageOut(BaseModel):
@@ -377,6 +387,7 @@ class LabelUsageOut(BaseModel):
     libelle: str
     usage: int
     manager_cuid: str | None = None
+    managers: list[ManagerInfoOut] = []
 
 
 class CountOut(BaseModel):

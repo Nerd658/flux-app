@@ -104,9 +104,9 @@ export default function AdminReferentials() {
             <input className="text-input" maxLength={40} placeholder="Saisir une nouvelle valeur" value={label}
                    onChange={(e) => setLabel(e.target.value)} aria-label={`Nouvelle valeur : ${kind.label}`} />
             {tab === "directions" && (
-              <input className="text-input upper-value" maxLength={32} placeholder="CUID Manager (ex. MGR0001)"
-                     value={mgrCuid} onChange={(e) => setMgrCuid(e.target.value.replace(/[^A-Za-z0-9]/g, ""))}
-                     aria-label="CUID du manager de département" style={{ maxWidth: "200px" }} />
+              <input className="text-input upper-value" maxLength={255} placeholder="CUIDs Managers (ex. MGR0001, MGR0002)"
+                     value={mgrCuid} onChange={(e) => setMgrCuid(e.target.value.replace(/[^A-Za-z0-9,;\s]/g, ""))}
+                     aria-label="CUIDs des managers de département" style={{ maxWidth: "280px" }} />
             )}
             <button className="btn btn-primary" disabled={busy || label.trim().length < 2}>
               <IconPlus width={18} height={18} />Ajouter
@@ -126,10 +126,10 @@ export default function AdminReferentials() {
                              onChange={(e) => setEditing({ ...editing, value: e.target.value })}
                              onKeyDown={(e) => e.key === "Escape" && setEditing(null)} />
                       {tab === "directions" && (
-                        <input className="text-input upper-value" maxLength={32} placeholder="CUID Manager"
+                        <input className="text-input upper-value" maxLength={255} placeholder="CUIDs Managers"
                                value={editing.manager_cuid || ""}
-                               onChange={(e) => setEditing({ ...editing, manager_cuid: e.target.value.replace(/[^A-Za-z0-9]/g, "") })}
-                               style={{ maxWidth: "160px" }} aria-label="CUID Manager" />
+                               onChange={(e) => setEditing({ ...editing, manager_cuid: e.target.value.replace(/[^A-Za-z0-9,;\s]/g, "") })}
+                               style={{ maxWidth: "240px" }} aria-label="CUIDs Managers" />
                       )}
                       <button className="btn btn-primary btn-sm" disabled={busy || editing.value.trim().length < 2}>Enregistrer</button>
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(null)}>Annuler</button>
@@ -140,7 +140,12 @@ export default function AdminReferentials() {
                         {it.libelle}
                         {tab === "directions" && (
                           <small className="field-hint" style={{ display: "inline-block", marginLeft: "12px" }}>
-                            Responsable CUID : <strong>{it.manager_cuid ? it.manager_cuid : "Non assigné"}</strong>
+                            Responsables : <strong>{it.manager_cuid ? it.manager_cuid : "Non assigné"}</strong>
+                            {it.managers && it.managers.length > 0 && (
+                              <span style={{ color: "var(--color-text-muted, #666)", marginLeft: "6px" }}>
+                                ({it.managers.map((m) => `${m.prenom} ${m.nom}`.trim() || m.cuid).join(", ")})
+                              </span>
+                            )}
                           </small>
                         )}
                       </span>

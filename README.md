@@ -12,7 +12,7 @@ python -m venv .venv && source .venv/bin/activate        # Linux/macOS (.venv\Sc
 pip install -r requirements.txt
 python -m app.seed                                     # tables + données initiales + comptes fictifs
 uvicorn app.main:app --host 127.0.0.1 --port 8000
-pytest -q tests                                        # 29 tests automatisés
+pytest -q tests                                        # 34 tests automatisés
 
 # 3. Frontend
 cd frontend
@@ -43,6 +43,17 @@ Le processus de validation s'articule en 3 étapes successives :
 | Niveau 1 | Manager de département (`manager`) | Filtre strict par CUID : ne voit et ne valide que les demandes dont le département lui est rattaché (`manager_cuid`). |
 | Niveau 2 | Validateur Technique (`securite`) | Contrôle de conformité réseau et sécurité après validation du manager. |
 | Niveau 3 | RSSI (`rssi`) | Approbation finale de sécurité SI débloquant le PDF scellé et la création du ticket Oline / iTop. |
+
+## Gestion multi-managers par direction et contrôles anti-contournement
+
+Pour les directions regroupant plusieurs départements (ex: DRSI) :
+- L'administrateur peut associer plusieurs CUIDs de managers autorisés à une même direction (séparés par des virgules dans `/admin/referentiels`).
+- Lors de la soumission d'une demande, si la direction possède plusieurs managers, un menu déroulant restreint oblige le demandeur à choisir son responsable légitime.
+- Le serveur applique des contrôles stricts anti-contournement (Zero Trust) :
+  1. Rejet si le manager choisi n'est pas déclaré pour la direction (`400 Bad Request`).
+  2. Rejet si le compte manager ne possède pas le rôle `manager` ou `admin`.
+  3. Rejet si le demandeur tente de s'auto-désigner comme manager.
+  4. Récupération et application des coordonnées officielles du compte manager pour éliminer toute usurpation de coordonnées.
 
 ## Profil utilisateur et annuaire Active Directory
 
