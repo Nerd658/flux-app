@@ -4,16 +4,17 @@ What changed:
 - Creation automatique d'un ticket Oline / iTop lors de la validation finale RSSI (Statut.validee) :
   * Formatage du titre et de la description detaillee de la demande avec ses lignes de flux et validations signees.
   * Organisation cible fixee a "Direction Informatique".
-  * Tentative nominale avec l'email du demandeur (caller_id) ; repli automatique transparent sans caller_id si l'utilisateur n'est pas encore enregistre dans le référentiel iTop.
+  * Tentative nominale avec l'email du demandeur (caller_id) avec resolution directe et sans ambiguite via _resolve_person (gere proprement le cas des homonymes ou multiples comptes avec le meme email dans iTop) ; repli automatique transparent sans caller_id si l'utilisateur n'est pas encore enregistre dans le referentiel iTop.
   * Generation a la volee et televersement en memoire du document officiel PDF scelle et signe avec les cles Ed25519 en piece jointe du ticket iTop.
   * Enregistrement de la reference du ticket cree (ticket_ref) sur la demande et journalisation d'audit (TICKET_CREATED / TICKET_CREATION_FAILED).
   * Robustesse : l'echec de connexion a Oline ne bloque pas la validation de la demande et est trace dans les journaux.
+- Script de test reel de creation de ticket unique sans piece jointe (backend/test_create_ticket.py) valide en production avec succes (Ticket R-211299 cree pour Hassan BIKIENGA).
 - Affichage de la reference du ticket Oline cote frontend :
   * Badge dedie (ticket-pill) dans l'en-tete de la page detail demande (RequestPage).
   * Section ticket dans le resume des faits (RequestView).
   * Affichage de la reference sous le numero de demande dans le tableau de bord (RequestList).
 - Suite de tests unitaires et d'integration Oline (backend/tests/test_oline_integration.py) :
-  * 27 tests valides au total couvrant les cas nominaux, le repli sans caller_id et la resilience.
+  * Tests valides couvrant les cas nominaux, le repli sans caller_id et la resilience.
 
 Why:
 - Cloture automatique du processus d'ouverture de flux vers l'exploitation reseau des l'accord du RSSI, sans ressaisie manuelle ni fuite de fichier sur le disque.
@@ -21,8 +22,10 @@ Why:
 Files affected:
 - backend/app/models.py - Colonne ticket_ref (String(64), indexee) sur FluxRequest
 - backend/app/schemas.py - Champ ticket_ref sur RequestSummary et RequestDetail
+- backend/app/oline.py - Resolution robuste d'organisation et de personne, support SSL d'entreprise
 - backend/app/services/oline_service.py - Service metier de synchronisation Oline et gestion des pieces jointes
 - backend/app/services/request_service.py - Appel de synchronisation Oline apres accord RSSI et mapping ticket_ref
+- backend/test_create_ticket.py - Script de verification de creation de ticket nominal
 - backend/tests/test_oline_integration.py - Tests unitaires de validation et resilience Oline
 - frontend/src/styles.css - Classes .ticket-pill et .ticket-pill-sm
 - frontend/src/pages/RequestPage.jsx - Badge de ticket Oline dans le hero
@@ -33,4 +36,4 @@ Breaking changes:
 - None
 
 Notes for review:
-- S'assurer que les variables OLINE_URL et OLINE_API_KEY sont bien enregistrees (Ctrl+S) dans backend/.env.
+- Le ticket test R-211299 a ete cree sur Oline pour valider le bon fonctionnement.

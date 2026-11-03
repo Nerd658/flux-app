@@ -67,8 +67,8 @@ class Oline:
             "title": title,
             "description": description,
             "org_id": self._resolve_organization(org_id) if org_id is not None else None,
-            "caller_id": f"SELECT Person WHERE email='{caller_id}'" if caller_id is not None else None,
-            "agent_id": f"SELECT Person WHERE email='{agent_id}'" if agent_id is not None else None,
+            "caller_id": self._resolve_person(caller_id) if caller_id is not None else None,
+            "agent_id": self._resolve_person(agent_id) if agent_id is not None else None,
             "team_id": f"SELECT Team WHERE name ='{team_id}'" if team_id is not None else None,
             "service_id": f"SELECT Service WHERE name='{service_id}'" if service_id is not None else None,
             "servicesubcategory_id": f"SELECT ServiceSubcategory WHERE name='{servicesubcategory_id}'" if servicesubcategory_id is not None else None,
@@ -267,6 +267,25 @@ class Oline:
 
     def _resolve_organization(self, org: str | int) -> str:
         return f"SELECT Organization WHERE id = {self._resolve_organization_id(org)}"
+
+    def _resolve_person_id(self, person: str | int) -> int:
+        if isinstance(person, int) or str(person).strip().isdigit():
+            return int(person)
+
+        body = {
+            "operation": "core/get",
+            "class": "Person",
+            "key": f"SELECT Person WHERE email = '{self._esc(str(person).strip())}'",
+            "output_fields": "id,name",
+        }
+        objects = self._post(body).get("objects") or {}
+        ids = sorted(int(obj["key"]) for obj in objects.values())
+        if not ids:
+            raise OlineError(f"Personne introuvable pour l'email : {person!r}")
+        return ids[0]
+
+    def _resolve_person(self, person: str | int) -> str:
+        return f"SELECT Person WHERE id = {self._resolve_person_id(person)}"
 
     def _get_list(self, class_name: str, oql_query: str, output_fields: str) -> list[dict[str, Any]]:
         body = {

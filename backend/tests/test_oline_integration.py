@@ -7,7 +7,7 @@ from app.services.oline_service import OlineService
 
 
 def test_oline_client_initialization():
-    o = Oline(url="http://test.local", api_key="secret123")
+    o = Oline(url="http://test.local", api_key="secret123", verify_ssl=True)
     assert o.url == "http://test.local"
     assert o.api_key == "secret123"
     assert o.verify_ssl is True
