@@ -81,7 +81,12 @@ class AuthService:
         if taken:
             raise HTTPException(status.HTTP_409_CONFLICT, "Cette adresse email est deja utilisee")
 
-        old_profile = {"nom": user.nom, "prenom": user.prenom, "email": user.email}
+        old_profile = {
+            "nom": user.nom,
+            "prenom": user.prenom,
+            "email": user.email,
+            "statut_pro": user.statut_pro.value if user.statut_pro else None,
+        }
         user.nom = data.nom.strip()
         user.prenom = data.prenom.strip()
         user.email = email
@@ -89,6 +94,8 @@ class AuthService:
             user.telephone = data.telephone.strip()
         if data.departement:
             user.departement = data.departement.strip()
+        if data.statut_pro:
+            user.statut_pro = data.statut_pro
 
         db.flush()
         audit(
@@ -98,7 +105,15 @@ class AuthService:
             entity="user",
             entity_id=user.id,
             request=request,
-            details={"ancien": old_profile, "nouveau": {"nom": user.nom, "prenom": user.prenom, "email": user.email}},
+            details={
+                "ancien": old_profile,
+                "nouveau": {
+                    "nom": user.nom,
+                    "prenom": user.prenom,
+                    "email": user.email,
+                    "statut_pro": user.statut_pro.value if user.statut_pro else None,
+                },
+            },
         )
         return user
 

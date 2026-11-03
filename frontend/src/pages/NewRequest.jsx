@@ -15,6 +15,11 @@ const STEPS = ["Type d'ouverture", "Informations", "Flux", "Vérification"];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE = /^\+?[0-9 ]{8,20}$/;
 const TYPE_ICONS = { HA: IconServers, Internet: IconGlobe };
+const STATUT_PRO_LABELS = {
+  employe: "Employé",
+  prestataire: "Prestataire",
+  stagiaire: "Stagiaire",
+};
 
 let uid = 0;
 const emptyLine = (pays) => ({
@@ -357,6 +362,7 @@ export default function NewRequest() {
             <div className="readonly-grid">
               <div><span>Nom</span><strong>{user.nom}</strong></div>
               <div><span>Prénom</span><strong>{user.prenom}</strong></div>
+              <div><span>Statut</span><strong>{STATUT_PRO_LABELS[user.statut_pro] || user.statut_pro || "Employé"}</strong></div>
               <div><span>Email</span><strong>{user.email}</strong></div>
               <div><span>Téléphone</span><strong className="num">{user.telephone}</strong></div>
             </div>

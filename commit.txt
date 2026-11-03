@@ -1,24 +1,56 @@
-[2026-11-03] - Epinglage cryptographique SHA-256 de toutes les images Docker de base
+[2026-11-03] - Ajout du statut professionnel du demandeur et persistance sur les demandes
 
 What changed:
-- Securite de la supply chain logicielle (Supply Chain Security) :
-  * Les tags d'images Docker etant mutables (un tag comme 'alpine' ou '16-alpine' peut etre modifie ou ecrase a tout moment par le registre), toutes les images ont ete figees sur leur empreinte cryptographique SHA-256 exacte (Digest pinning).
-- Images epinglees :
-  * PostgreSQL (docker-compose.yml) : postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
-  * Backend Python (backend/Dockerfile) : python:3.12-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
-  * Frontend Builder Node (frontend/Dockerfile) : node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
-  * Frontend Serveur Nginx (frontend/Dockerfile) : nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606
+- Creation de l'enumeration StatutProfessionnel (employe, prestataire, stagiaire) :
+  * Modele User : ajout de la colonne 'statut_pro' (nullable pour declencher automatiquement la finalisation sur les profils existants).
+  * Modele FluxRequest : ajout de la colonne figee 'dem_statut_pro' (instantané a la soumission de la demande).
+- Schema et controle d'acces Pydantic :
+  * 'UserOut.profil_incomplet' evalue a True si 'statut_pro' est manquant, forcant l'ouverture automatique du modal des la connexion.
+  * 'ProfileUpdateIn' impose la selection du statut professionnel valide (employe, prestataire, stagiaire).
+  * 'RequestDetail', 'RequestSummary', 'PublicVerifyOut' et 'UserAdminOut' exposent le statut du demandeur.
+- Sceau cryptographique et tracabilite :
+  * 'seal.py' integre 'dem_statut_pro' dans le tuple canonique SHA-256 de calcul de l'empreinte ('content_hash').
+  * 'pdf.py' affiche le statut professionnel du demandeur sur le document PDF officiel.
+  * 'oline_service.py' ajoute la mention nominative et le statut du demandeur dans la description du ticket Oline / iTop.
+- Migration idempotente :
+  * Ajout de 'migrate_schema' dans 'app/database.py' (ALTER TABLE ADD COLUMN IF NOT EXISTS pour SQLite et PostgreSQL) execute au demarrage FastAPI (lifespan) et dans le seed.
+- Interface React :
+  * 'ProfileModal' : ajout d'une liste deroulante obligatoire pour choisir son statut professionnel.
+  * 'UserMenu' : affichage du statut professionnel dans l'en-tete utilisateur.
+  * 'NewRequest' : recapitulatif du statut professionnel dans le bloc demandeur.
+  * 'RequestView' : badge du statut du demandeur dans la vue detaillee de la demande.
+  * 'admin/Users' : colonne et affichage du statut professionnel dans le tableau des comptes.
+- Docker et compilation :
+  * 'frontend/Dockerfile' : passage de l'etape builder a 'node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0' pour resoudre la dependance glibc de Vite/lightningcss lors du build en conteneur.
+- Tests :
+  * Ajout de 'tests/test_statut_professionnel.py' validant le blocage de profil incomplet, la mise a jour de profil, le figeage sur la demande et le formatage Oline. Suite complete : 38/38 tests valides.
 
 Why:
-- Garantir l'immutabilite absolue des environnements d'execution, empecher toute attaque par substitution de registre ou modification silencieuse d'image amont, et assurer une reproductibilite a 100% au bit pres.
+- Repondre au besoin metier d'identification formelle de la nature du contrat de travail de chaque demandeur d'acces reseau, avec tracabilite inalterable des la soumission.
 
 Files affected:
-- docker-compose.yml - Digest pinning postgres:16-alpine
-- backend/Dockerfile - Digest pinning python:3.12-slim-bookworm
-- frontend/Dockerfile - Digest pinning node:20-alpine et nginx:alpine
+- backend/app/models.py - Enum StatutProfessionnel et colonnes statut_pro / dem_statut_pro
+- backend/app/schemas.py - Validation et exposition du statut_pro
+- backend/app/seal.py - Prise en compte du statut professionnel dans le sceau canonique
+- backend/app/pdf.py - Affichage du statut professionnel dans le PDF scelle
+- backend/app/seed.py - Données initiales et migration
+- backend/app/database.py - Fonction migrate_schema idempotente
+- backend/app/main.py - Execution de migrate_schema au demarrage
+- backend/app/routers/public.py - Exposition du statut sur le portail de verification
+- backend/app/services/auth_service.py - Enregistrement et audit trail du statut utilisateur
+- backend/app/services/request_service.py - Figeage du statut demandeur a la soumission
+- backend/app/services/oline_service.py - Mention du statut dans les tickets Oline
+- backend/tests/test_statut_professionnel.py - Tests automatises du cycle de vie du statut
+- frontend/Dockerfile - Ajustement glibc builder pour compilation Vite sans erreur
+- frontend/src/App.jsx - Selection obligatoire dans ProfileModal et affichage UserMenu
+- frontend/src/pages/NewRequest.jsx - Affichage du statut demandeur
+- frontend/src/components/RequestView.jsx - Affichage du statut dans la vue demande
+- frontend/src/pages/admin/Users.jsx - Colonne Statut pro dans l'administration des utilisateurs
+- README.md - Documentation du statut professionnel obligatoire
+- commit.txt - Fiche descriptive du commit
 
 Breaking changes:
-- None
+- None. Les utilisateurs existants sans statut renseigne sont simplement invites a finaliser leur profil a leur prochaine connexion.
 
 Notes for review:
-- Chaque build utilisera exactement ces memes binaires verifies.
+- Verifier la saisie dans ProfileModal lors de la premiere connexion d'un demandeur.

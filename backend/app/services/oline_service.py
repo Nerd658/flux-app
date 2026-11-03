@@ -24,7 +24,15 @@ class OlineService:
 
         justif_text = "\n".join(justifications) if justifications else "Ouverture de flux réseau validée par le RSSI."
 
+        statut_label = (
+            req.dem_statut_pro.value.capitalize()
+            if getattr(req, "dem_statut_pro", None)
+            else "Employé"
+        )
+
         return (
+            f"Demandeur : {req.dem_prenom} {req.dem_nom.upper()} ({statut_label})\n"
+            f"Direction : {req.departement}\n"
             f"Justification :\n"
             f"{justif_text}\n\n"
             f"Référence : {req.reference}\n"

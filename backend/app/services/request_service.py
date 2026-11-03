@@ -15,6 +15,7 @@ from app.models import (
     FluxRequest,
     Role,
     Statut,
+    StatutProfessionnel,
     User,
     Validation,
     utcnow,
@@ -90,6 +91,7 @@ class RequestService:
                 prenom=req.dem_prenom,
                 email=req.dem_email,
                 telephone=req.dem_telephone,
+                statut_pro=getattr(req, "dem_statut_pro", None),
             ),
             manager=PersonneOut(
                 nom=req.mgr_nom,
@@ -128,6 +130,7 @@ class RequestService:
                 statut=r.statut,
                 created_at=r.created_at,
                 nb_lignes=len(r.lines),
+                demandeur_statut_pro=getattr(r, "dem_statut_pro", None),
             )
             for r in rows
         ]
@@ -189,7 +192,11 @@ class RequestService:
         return RequestDetail(
             flux_type=flux_label,
             demandeur=PersonneOut(
-                nom=user.nom, prenom=user.prenom, email=user.email, telephone=user.telephone
+                nom=user.nom,
+                prenom=user.prenom,
+                email=user.email,
+                telephone=user.telephone,
+                statut_pro=user.statut_pro,
             ),
             manager=mgr_info,
             manager_cuid=mgr_cuid,
@@ -209,6 +216,7 @@ class RequestService:
         mgr_email = mgr_user.email if mgr_user and mgr_user.email and not mgr_user.email.endswith("@pending.orange.bf") else str(data.manager.email)
         mgr_tel = mgr_user.telephone if mgr_user and mgr_user.telephone else data.manager.telephone
 
+        dem_statut = user.statut_pro or StatutProfessionnel.employe
         req = FluxRequest(
             reference=f"TMP-{secrets.token_hex(8)}",
             flux_type_id=data.flux_type_id,
@@ -218,6 +226,7 @@ class RequestService:
             dem_prenom=user.prenom,
             dem_email=user.email,
             dem_telephone=user.telephone,
+            dem_statut_pro=dem_statut,
             departement=data.departement,
             manager_cuid=mgr_cuid,
             mgr_nom=mgr_nom,

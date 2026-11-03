@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.database import Base, SessionLocal, engine
-from app.models import Country, Direction, FluxType, Role, User, Zone
+from app.database import Base, SessionLocal, engine, migrate_schema
+from app.models import Country, Direction, FluxType, Role, StatutProfessionnel, User, Zone
 
 FLUX_TYPES = ["HA", "Internet"]
 DIRECTIONS = ["CX", "RSSI"]
@@ -51,7 +51,8 @@ def _seed_users(db: Session) -> None:
         if db.scalar(select(User).where(User.cuid == cuid)):
             continue
         db.add(User(cuid=cuid, email=email, nom=nom, prenom=prenom, telephone=tel,
-                    departement=dept, role=role, password_hash=ph.hash(password)))
+                    departement=dept, role=role, statut_pro=StatutProfessionnel.employe,
+                    password_hash=ph.hash(password)))
         created = True
     if created and not settings.seed_password:
         print(f"[seed] Mot de passe des comptes fictifs : {password}")
@@ -59,6 +60,7 @@ def _seed_users(db: Session) -> None:
 
 def run() -> None:
     Base.metadata.create_all(bind=engine)
+    migrate_schema(engine)
     with SessionLocal() as db, db.begin():   # transaction unique : tout ou rien
         _seed_labels(db, FluxType, FLUX_TYPES)
         _seed_directions(db)

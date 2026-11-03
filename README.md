@@ -34,7 +34,7 @@ python -m venv .venv && source .venv/bin/activate        # Linux/macOS (.venv\Sc
 pip install -r requirements.txt
 python -m app.seed                                     # tables + données initiales + comptes fictifs
 uvicorn app.main:app --host 127.0.0.1 --port 8000
-pytest -q tests                                        # 34 tests automatisés
+pytest -q tests                                        # 38 tests automatisés
 
 # 3. Frontend
 cd frontend
@@ -79,13 +79,14 @@ Pour les directions regroupant plusieurs départements (ex: DRSI) :
 
 ## Profil utilisateur et annuaire Active Directory
 
-Lorsqu'un collaborateur se connecte pour la première fois via l'annuaire d'entreprise (Active Directory) avec des attributs par défaut (ex. nom égal au CUID, email en `@annuaire.invalid`), l'application lui propose automatiquement une modale de complétion de profil :
+Lorsqu'un collaborateur se connecte pour la première fois via l'annuaire d'entreprise (Active Directory) ou si son profil est incomplet, l'application lui propose automatiquement une modale obligatoire de finalisation de profil :
 - Prénom et Nom réels
 - Email professionnel nominatif
 - Direction de rattachement (sélectionnée parmi les directions configurées)
+- Statut professionnel obligatoire : Employé, Prestataire ou Stagiaire
 - Téléphone de contact
 
-Ces informations sont persistées en base et protégées contre tout écrasement lors des futures authentifications AD.
+Ces informations sont persistées en base et protégées contre tout écrasement lors des futures authentifications AD. Le statut professionnel est figé sur chaque demande d'ouverture de flux soumise, imprimé sur le document PDF officiel, visible lors de la vérification publique et transmis dans le ticket iTop Oline.
 
 ## Intégration Oline / iTop
 

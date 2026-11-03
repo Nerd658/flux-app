@@ -8,6 +8,11 @@ import { IconPencil, IconPower, IconSearch, IconUserPlus, IconX } from "../../co
 
 const ROLES = ["demandeur", "manager", "securite", "rssi", "admin"];
 const ASSIGNABLE = ["manager", "securite", "rssi", "admin"];   // « demandeur » est le rôle par défaut
+const STATUT_PRO_LABELS = {
+  employe: "Employé",
+  prestataire: "Prestataire",
+  stagiaire: "Stagiaire",
+};
 const SINGLE = [];                                             // les validateurs peuvent être plusieurs
 const label = (u) => (u.en_attente ? u.cuid : fullName(u));
 
@@ -166,8 +171,9 @@ export default function AdminUsers() {
                   <th>Utilisateur</th>
                   <th>CUID</th>
                   <th>Direction</th>
+                  <th>Statut pro</th>
                   <th>Rôle</th>
-                  <th>Statut</th>
+                  <th>État</th>
                   <th className="r"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -188,6 +194,7 @@ export default function AdminUsers() {
                       </td>
                       <td><span className="mono">{u.cuid}</span></td>
                       <td>{u.en_attente ? "—" : u.departement}</td>
+                      <td>{u.statut_pro ? (STATUT_PRO_LABELS[u.statut_pro] || u.statut_pro) : "—"}</td>
                       <td><span className={`role-pill ${u.role}`}>{ROLE_INFO[u.role]?.label || u.role}</span></td>
                       <td><span className={`state ${u.is_active ? "on" : ""}`}>{u.is_active ? "Actif" : "Désactivé"}</span></td>
                       <td className="r">

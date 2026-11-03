@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator, model_validator
 
-from app.models import Decision, Periode, Role, Statut
+from app.models import Decision, Periode, Role, Statut, StatutProfessionnel
 
 
 class StrictModel(BaseModel):
@@ -27,6 +27,7 @@ class ProfileUpdateIn(StrictModel):
     email: EmailStr
     telephone: str = Field(default="", max_length=30)
     departement: str = Field(default="", max_length=150)
+    statut_pro: StatutProfessionnel = Field(default=StatutProfessionnel.employe)
 
 
 class UserOut(BaseModel):
@@ -41,6 +42,7 @@ class UserOut(BaseModel):
     telephone: str
     departement: str
     role: Role
+    statut_pro: StatutProfessionnel | None = None
 
     @computed_field
     @property
@@ -49,6 +51,7 @@ class UserOut(BaseModel):
             self.prenom in ("-", "", None)
             or self.nom == self.cuid
             or self.email.endswith("@annuaire.invalid")
+            or self.statut_pro is None
         )
 
 
@@ -227,6 +230,7 @@ class PersonneOut(BaseModel):
     prenom: str
     email: str
     telephone: str
+    statut_pro: StatutProfessionnel | None = None
 
 
 class FluxLineOut(BaseModel):
@@ -264,6 +268,7 @@ class RequestSummary(BaseModel):
     statut: Statut
     created_at: datetime
     nb_lignes: int
+    demandeur_statut_pro: StatutProfessionnel | None = None
 
 
 class RequestDetail(BaseModel):
@@ -315,6 +320,7 @@ class PublicVerifyOut(BaseModel):
     flux_type: str
     statut: Statut
     demandeur_nom: str
+    demandeur_statut_pro: StatutProfessionnel | None = None
     departement: str
     periode: Periode
     date_debut: date
@@ -337,6 +343,7 @@ class UserAdminOut(BaseModel):
     email: str
     telephone: str
     departement: str
+    statut_pro: StatutProfessionnel | None = None
     role: Role
     is_active: bool
     created_at: datetime

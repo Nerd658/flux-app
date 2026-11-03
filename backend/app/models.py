@@ -45,6 +45,12 @@ class Decision(str, enum.Enum):
     refusee = "refusee"
 
 
+class StatutProfessionnel(str, enum.Enum):
+    employe = "employe"
+    prestataire = "prestataire"
+    stagiaire = "stagiaire"
+
+
 # ---------- Utilisateurs (authentification fictive avant AD) ----------
 
 class User(Base):
@@ -57,6 +63,7 @@ class User(Base):
     prenom: Mapped[str] = mapped_column(String(100))
     telephone: Mapped[str] = mapped_column(String(30))
     departement: Mapped[str] = mapped_column(String(150))
+    statut_pro: Mapped[StatutProfessionnel | None] = mapped_column(Enum(StatutProfessionnel), nullable=True, default=None)
     password_hash: Mapped[str] = mapped_column(String(255))          # Argon2id, jamais en clair
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.demandeur)
     is_active: Mapped[bool] = mapped_column(default=True)
@@ -129,6 +136,9 @@ class FluxRequest(Base):
     dem_prenom: Mapped[str] = mapped_column(String(100))
     dem_email: Mapped[str] = mapped_column(String(255))
     dem_telephone: Mapped[str] = mapped_column(String(30))
+    dem_statut_pro: Mapped[StatutProfessionnel] = mapped_column(
+        Enum(StatutProfessionnel), default=StatutProfessionnel.employe
+    )
     departement: Mapped[str] = mapped_column(String(150))
 
     # Manager rattache au departement ou saisi librement

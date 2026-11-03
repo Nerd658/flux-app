@@ -1,5 +1,6 @@
 import logging
 import secrets
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -7,12 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
+from app.database import migrate_schema
 from app.routers import admin, auth, public, referentiels, requests
 from app.security import CSRF_HEADER
 
 settings = get_settings()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    migrate_schema()
+    yield
+
 
 is_dev = settings.environment == "dev"
 app = FastAPI(
@@ -21,6 +30,7 @@ app = FastAPI(
     docs_url="/api/docs" if is_dev else None,
     redoc_url=None,
     openapi_url="/api/openapi.json" if is_dev else None,
+    lifespan=lifespan,
 )
 
 # CORS strict : origines explicites, cookies autorisés, méthodes/en-têtes limités

@@ -166,9 +166,25 @@ def build_pdf(req: RequestDetail) -> bytes:
         periode_val, periode_lines = f"Du {_fmt_date(req.date_debut)} au {_fmt_date(req.date_fin)}", [f"Temporaire, {days} jours"]
     else:
         periode_val, periode_lines = f"À partir du {_fmt_date(req.date_debut)}", ["Permanente, sans date de fin"]
+    statut_labels = {
+        "employe": "Employé",
+        "prestataire": "Prestataire",
+        "stagiaire": "Stagiaire",
+    }
+    statut_val = d.statut_pro.value if getattr(d, "statut_pro", None) else ""
+    statut_str = statut_labels.get(statut_val, "Employé")
+    demandeur_lines = [d.email]
+    if d.telephone:
+        demandeur_lines.append(d.telephone)
+    demandeur_lines.append(f"Statut : {statut_str}")
+
+    mgr_lines = [m.email]
+    if m.telephone:
+        mgr_lines.append(m.telephone)
+
     cards = [
-        _info_card("DEMANDEUR", f"{d.prenom} {d.nom.upper()}", [d.email, d.telephone]),
-        _info_card("MANAGER", f"{m.prenom} {m.nom.upper()}", [m.email, m.telephone]),
+        _info_card("DEMANDEUR", f"{d.prenom} {d.nom.upper()}", demandeur_lines),
+        _info_card("MANAGER", f"{m.prenom} {m.nom.upper()}", mgr_lines),
         _info_card("DIRECTION", req.departement, [f"Soumise le {_fmt_dt(req.created_at)}"]),
         _info_card("PÉRIODE SOUHAITÉE", periode_val, periode_lines),
     ]

@@ -1,5 +1,5 @@
-# Etape 1 : Compilation du frontend React
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
+# Etape 1 : Compilation du frontend React (Debian slim utilise pour la compatibilite binaire lightningcss glibc)
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS builder
 
 WORKDIR /app
 

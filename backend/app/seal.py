@@ -43,7 +43,13 @@ def content_hash(req: FluxRequest) -> str:
     data = {
         "reference": req.reference,
         "flux_type": req.flux_type_label,
-        "demandeur": [req.dem_nom, req.dem_prenom, req.dem_email, req.dem_telephone],
+        "demandeur": [
+            req.dem_nom,
+            req.dem_prenom,
+            req.dem_email,
+            req.dem_telephone,
+            req.dem_statut_pro.value if getattr(req, "dem_statut_pro", None) else "employe",
+        ],
         "manager": [req.mgr_nom, req.mgr_prenom, req.mgr_email, req.mgr_telephone],
         "departement": req.departement,
         "periode": req.periode.value,

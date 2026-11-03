@@ -67,6 +67,7 @@ def verify_request_public(
         flux_type=req.flux_type_label,
         statut=req.statut,
         demandeur_nom=f"{req.dem_prenom} {req.dem_nom.upper()}",
+        demandeur_statut_pro=getattr(req, "dem_statut_pro", None),
         departement=req.departement,
         periode=req.periode,
         date_debut=req.date_debut,

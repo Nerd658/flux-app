@@ -2,11 +2,18 @@
 import FlowRoute from "./FlowRoute.jsx";
 import { daysBetween, formatDate } from "./ui.jsx";
 
-function Person({ title, p }) {
+const STATUT_PRO_LABELS = {
+  employe: "Employé",
+  prestataire: "Prestataire",
+  stagiaire: "Stagiaire",
+};
+
+function Person({ title, p, statut }) {
   return (
     <div className="person">
       <span className="person-title">{title}</span>
       <strong>{p.prenom} {p.nom.toUpperCase()}</strong>
+      {statut && <span className="person-badge" style={{ fontSize: "0.8rem", color: "#175cd3", fontWeight: 500 }}>{STATUT_PRO_LABELS[statut] || statut}</span>}
       <span>{p.email}</span>
       <span className="num">{p.telephone}</span>
     </div>
@@ -18,7 +25,7 @@ export default function RequestView({ req }) {
   return (
     <div className="request-view">
       <section className="facts">
-        <Person title="Demandeur" p={req.demandeur} />
+        <Person title="Demandeur" p={req.demandeur} statut={req.demandeur?.statut_pro} />
         <Person title={req.manager_cuid ? `Manager (${req.manager_cuid})` : "Manager"} p={req.manager} />
         <div className="person">
           <span className="person-title">Direction</span>

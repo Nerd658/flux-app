@@ -131,6 +131,12 @@ function Sidebar() {
   );
 }
 
+const STATUT_PRO_LABELS = {
+  employe: "Employé",
+  prestataire: "Prestataire",
+  stagiaire: "Stagiaire",
+};
+
 function ProfileModal({ user, force, onClose, onSaved }) {
   const toast = useToast();
   const [nom, setNom] = useState(user.nom && user.nom !== user.cuid ? user.nom : "");
@@ -138,6 +144,7 @@ function ProfileModal({ user, force, onClose, onSaved }) {
   const [email, setEmail] = useState(user.email && !user.email.endsWith("@annuaire.invalid") ? user.email : "");
   const [telephone, setTelephone] = useState(user.telephone || "");
   const [departement, setDepartement] = useState(user.departement && user.departement !== "Non renseignee" ? user.departement : "");
+  const [statutPro, setStatutPro] = useState(user.statut_pro || "");
   const [directions, setDirections] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -156,6 +163,10 @@ function ProfileModal({ user, force, onClose, onSaved }) {
       setError("Veuillez sélectionner votre direction de rattachement.");
       return;
     }
+    if (!statutPro) {
+      setError("Veuillez sélectionner votre statut professionnel (employé, prestataire ou stagiaire).");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -165,6 +176,7 @@ function ProfileModal({ user, force, onClose, onSaved }) {
         email: email.trim(),
         telephone: telephone.trim(),
         departement: departement.trim(),
+        statut_pro: statutPro,
       });
       toast("Profil enregistré avec succès", "success");
       onSaved(updated);
@@ -203,24 +215,39 @@ function ProfileModal({ user, force, onClose, onSaved }) {
         <Field label="Email professionnel" hint="Utilisé pour le suivi de vos demandes et vos tickets Oline">
           <input className="text-input" type="email" required placeholder="prenom.nom@orange.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
-        <Field label="Direction de rattachement" hint="Votre direction dans l'organigramme">
-          <select
-            className="text-input select-input"
-            value={departement}
-            onChange={(e) => setDepartement(e.target.value)}
-            required
-          >
-            <option value="" disabled>Sélectionner votre direction…</option>
-            {directions.map((d) => (
-              <option key={d.id} value={d.libelle}>
-                {d.libelle}
-              </option>
-            ))}
-            {departement && !directions.some((d) => d.libelle === departement) && (
-              <option value={departement}>{departement}</option>
-            )}
-          </select>
-        </Field>
+        <div className="grid-2">
+          <Field label="Direction de rattachement" hint="Votre direction dans l'organigramme">
+            <select
+              className="text-input select-input"
+              value={departement}
+              onChange={(e) => setDepartement(e.target.value)}
+              required
+            >
+              <option value="" disabled>Sélectionner votre direction…</option>
+              {directions.map((d) => (
+                <option key={d.id} value={d.libelle}>
+                  {d.libelle}
+                </option>
+              ))}
+              {departement && !directions.some((d) => d.libelle === departement) && (
+                <option value={departement}>{departement}</option>
+              )}
+            </select>
+          </Field>
+          <Field label="Statut professionnel" hint="Votre statut contractuel">
+            <select
+              className="text-input select-input"
+              value={statutPro}
+              onChange={(e) => setStatutPro(e.target.value)}
+              required
+            >
+              <option value="" disabled>Sélectionner votre statut…</option>
+              <option value="employe">Employé</option>
+              <option value="prestataire">Prestataire</option>
+              <option value="stagiaire">Stagiaire</option>
+            </select>
+          </Field>
+        </div>
         <Field label="Téléphone">
           <input className="text-input" inputMode="tel" placeholder="+226 70 00 00 00" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
         </Field>
@@ -274,7 +301,7 @@ function UserMenu({ onLogout, onEditProfile }) {
           <div className="menu-head">
             <strong>{fullName(user)}</strong>
             <small>{user.email}</small>
-            <small className="num">CUID {user.cuid}</small>
+            <small className="num">CUID {user.cuid}{user.statut_pro ? ` · ${STATUT_PRO_LABELS[user.statut_pro] || user.statut_pro}` : ""}</small>
           </div>
           <button type="button" role="menuitem" className="menu-item" onClick={() => { setOpen(false); onEditProfile(); }} aria-label="Modifier mon profil">
             <IconPencil />Modifier mon profil
