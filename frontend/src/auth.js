@@ -28,6 +28,14 @@ export const ROLE_INFO = {
     label: "Administrateur",
     desc: "Vous gérez les comptes, les référentiels et le journal d'audit. Vous ne validez aucune demande.",
   },
+  validateur_n1: {
+    label: "Validateur N1 (Transitoire)",
+    desc: "Ancien rôle de validation niveau 1.",
+  },
+  validateur_final: {
+    label: "Validateur Final (Transitoire)",
+    desc: "Ancien rôle de validation finale.",
+  },
 };
 
 export const ROLE_LABELS = Object.fromEntries(Object.entries(ROLE_INFO).map(([k, v]) => [k, v.label]));

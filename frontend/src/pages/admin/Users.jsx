@@ -18,8 +18,8 @@ function RoleOptions({ value, onChange, lockedReason }) {
         <label key={r} className={`role-option ${value === r ? "on" : ""} ${lockedReason ? "disabled" : ""}`}>
           <input type="radio" name="role" value={r} checked={value === r} disabled={!!lockedReason} onChange={() => onChange(r)} />
           <span>
-            <strong>{ROLE_INFO[r].label}</strong>
-            <small>{ROLE_INFO[r].desc}</small>
+            <strong>{ROLE_INFO[r]?.label || r}</strong>
+            <small>{ROLE_INFO[r]?.desc || ""}</small>
           </span>
         </label>
       ))}
@@ -84,7 +84,7 @@ function RoleModal({ initial, isSelf, users, onClose, onSaved }) {
         </Field>
       </form>
       {holder && (
-        <Notice tone="warning" title={`${ROLE_INFO[role].label} actuel : ${label(holder)} (${holder.cuid})`}>
+        <Notice tone="warning" title={`${ROLE_INFO[role]?.label || role} actuel : ${label(holder)} (${holder.cuid})`}>
           <p>Ce rôle n'a qu'un titulaire à la fois : {label(holder)} redeviendra demandeur.</p>
         </Notice>
       )}
@@ -127,7 +127,7 @@ export default function AdminUsers() {
 
   function saved({ user: u, retires }) {
     const extra = retires.length ? ` ; ${retires.join(", ")} redevient demandeur` : "";
-    toast(`${u.cuid} est maintenant ${ROLE_INFO[u.role].label}${extra}`);
+    toast(`${u.cuid} est maintenant ${ROLE_INFO[u.role]?.label || u.role}${extra}`);
     close();
     load();
   }
@@ -152,7 +152,7 @@ export default function AdminUsers() {
           <select className={`text-input select-input compact ${roleFilter ? "" : "is-empty"}`} value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filtrer par rôle">
             <option value="">Tous les rôles</option>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_INFO[r].label}</option>)}
+            {ROLES.map((r) => <option key={r} value={r}>{ROLE_INFO[r]?.label || r}</option>)}
           </select>
         </div>
 
@@ -188,7 +188,7 @@ export default function AdminUsers() {
                       </td>
                       <td><span className="mono">{u.cuid}</span></td>
                       <td>{u.en_attente ? "—" : u.departement}</td>
-                      <td><span className={`role-pill ${u.role}`}>{ROLE_INFO[u.role].label}</span></td>
+                      <td><span className={`role-pill ${u.role}`}>{ROLE_INFO[u.role]?.label || u.role}</span></td>
                       <td><span className={`state ${u.is_active ? "on" : ""}`}>{u.is_active ? "Actif" : "Désactivé"}</span></td>
                       <td className="r">
                         <div className="row-actions">
@@ -233,7 +233,7 @@ export default function AdminUsers() {
           onClose={close}
           onConfirm={async () => saved(await api.admin.setRole(dialog.user.id, "demandeur"))}
         >
-          <p>{label(dialog.user)} perd le rôle « {ROLE_INFO[dialog.user.role].label} » et redevient demandeur, avec effet immédiat.</p>
+          <p>{label(dialog.user)} perd le rôle « {ROLE_INFO[dialog.user.role]?.label || dialog.user.role} » et redevient demandeur, avec effet immédiat.</p>
         </ConfirmDialog>
       )}
       {dialog?.type === "deactivate" && (

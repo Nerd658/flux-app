@@ -93,7 +93,7 @@ function FreshNewRequest() {
 
 function Sidebar() {
   const { user } = useAuth();
-  const info = ROLE_INFO[user.role];
+  const info = ROLE_INFO[user.role] || { label: user.role, desc: "" };
   return (
     <aside className="sidebar" aria-label="Menu">
       <div className="sidebar-top">
@@ -265,7 +265,7 @@ function UserMenu({ onLogout, onEditProfile }) {
         <span className="avatar" aria-hidden="true">{initials(user)}</span>
         <span className="user-meta">
           <strong>{fullName(user)}</strong>
-          <small>{ROLE_INFO[user.role].label}</small>
+          <small>{ROLE_INFO[user.role]?.label || user.role}</small>
         </span>
         <IconChevronDown className="user-chevron" width={16} height={16} />
       </button>
