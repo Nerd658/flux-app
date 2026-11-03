@@ -1,24 +1,16 @@
-[2026-11-03] - Configuration Nginx hote HTTP port 80 pour acces direct par IP et support COOKIE_SECURE
+[2026-11-03] - Initialisation automatique et idempotente des tables au demarrage de FastAPI
 
 What changed:
-- Nginx Hote (nginx-host.conf.example) :
-  * Simplification de la configuration pour un acces direct par IP sans nom de domaine ni SSL (HTTP port 80 avec server_name _).
-  * Routage de /api/ vers 127.0.0.1:8000 et / vers le frontend conteneurise sur 127.0.0.1:3000.
-  * Section HTTPS documentee et commentee pour activation ulterieure lors de l'obtention du nom de domaine et des certificats.
-- Securite des sessions sur HTTP non chiffre :
-  * Ajout du reglage 'cookie_secure' dans config.py et security.py pour eviter le blocage des cookies d'authentification sur une connexion HTTP directe par IP (attribut SameSite=Lax et Secure=False lorsque non HTTPS).
+- backend/app/main.py :
+  * Execution automatique de 'seed.run()' dans le lifespan de l'application FastAPI.
+  * Cree automatiquement toutes les tables (Base.metadata.create_all), applique les migrations (migrate_schema) et injecte les referentiels initiaux si la base de donnees PostgreSQL demarre completement vide.
 
 Why:
-- Permettre un deploiement et des tests immediats sur le serveur distant en utilisant uniquement son adresse IP sur le port 80 standard, avant la mise en place du DNS et des certificats SSL.
+- Resout l'erreur 'relation "users" does not exist' sur un conteneur neuf ou une base PostgreSQL neuve sans necessiter d'intervention manuelle pour executer 'python -m app.seed'.
 
 Files affected:
-- nginx-host.conf.example - Configuration HTTP port 80 sur IP directe
-- backend/app/config.py - Ajout de la variable cookie_secure
-- backend/app/security.py - Support flexible du flag Secure et SameSite pour cookies HTTP sur IP
+- backend/app/main.py - Appel de seed.run() au boot
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
-- None.
-
-Notes for review:
-- Si le serveur distant est accede en HTTP sur son IP avec ENVIRONMENT=prod, s'assurer que COOKIE_SECURE=false est defini dans backend/.env jusqu'a la mise en place de HTTPS.
+- None. L'operation est 100% idempotente (si les tables et donnees existent deja, rien n'est ecrase).

@@ -19,7 +19,12 @@ logger = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    migrate_schema()
+    try:
+        from app import seed
+        seed.run()
+    except Exception as exc:
+        logger.error("Erreur lors de l'initialisation automatique de la base de donnees : %s", exc)
+        migrate_schema()
     yield
 
 
