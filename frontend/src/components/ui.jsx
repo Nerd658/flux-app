@@ -82,10 +82,18 @@ export function PageHero({ kicker, title, lead, actions, children, mono = false 
 const ToastContext = createContext(() => {});
 export const useToast = () => useContext(ToastContext);
 
+let toastSeq = 0;
+const uid = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${++toastSeq}-${Math.random().toString(36).slice(2, 7)}`;
+};
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const push = useCallback((message, tone = "success") => {
-    const id = crypto.randomUUID();
+    const id = uid();
     setToasts((t) => [...t.slice(-2), { id, message, tone }]); // 3 messages au plus à l'écran
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500);
   }, []);

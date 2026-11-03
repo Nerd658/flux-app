@@ -1,15 +1,16 @@
-[2026-11-03] - Ajustement du path des cookies de session a la racine '/'
+[2026-11-03] - Remplacement de crypto.randomUUID par un generateur d'identifiant universel
 
 What changed:
-- backend/app/security.py :
-  * 'ACCESS_COOKIE' (access_token) est desormais positionne avec 'path="/"' (au lieu de 'path="/api"').
-  * 'clear_session_cookies' supprime egalement sur 'path="/"'.
+- frontend/src/components/ui.jsx :
+  * 'crypto.randomUUID()' a ete remplace par une fonction generateur d'ID compatible tout contexte ('uid()').
+  * Utilise 'crypto.randomUUID()' si disponible, sinon bascule sur un timestamp + sequenceur + aleatoire unique.
 
 Why:
-- Garantit l'envoi systematique du cookie de session par tous les navigateurs (Chrome, Firefox, Safari) sans risque de rejet ou d'incompatibilite liee au scoping de chemin '/api' derriere un reverse proxy Nginx.
+- 'crypto.randomUUID' n'est disponible dans les navigateurs que dans un 'Secure Context' (HTTPS ou localhost).
+- Lorsqu'une application est accedee en simple HTTP sur une adresse IP directe, 'crypto.randomUUID' est 'undefined' et provoque une erreur 'TypeError: crypto.randomUUID is not a function' lors de l'affichage des notifications toast (ex. lors de la validation du profil).
 
 Files affected:
-- backend/app/security.py - Scope path="/" pour les cookies
+- frontend/src/components/ui.jsx - Generateur d'ID compatible HTTP direct par IP
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
