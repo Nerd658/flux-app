@@ -2,8 +2,30 @@
 
 FastAPI + PostgreSQL / MySQL (SQLAlchemy) · React (Vite) · validation à 3 niveaux scellée en Ed25519 · export PDF officiel · synchronisation de tickets Oline / iTop.
 
+## Déploiement en Production (Docker Compose + Nginx Hôte)
+
+L'application est conteneurisée pour un déploiement sécurisé avec persistance complète des données :
+
 ```bash
-# 1. Base de données PostgreSQL (Docker)
+# 1. Vérifier la configuration backend/.env
+# S'assurer que JWT_SECRET, KEY_ENCRYPTION_SECRET et DATABASE_URL sont définis
+
+# 2. Démarrer l'ensemble des conteneurs
+docker compose up -d --build
+
+# 3. Vérifier l'état des services
+docker compose ps
+docker compose logs -f backend
+```
+
+Les conteneurs sont configurés comme suit :
+* **Base de données (`flux-db`)** : PostgreSQL 16 Alpine avec volume persistant nommé `flux_postgres_data`. Les données sont préservées même en cas d'arrêt ou de suppression du conteneur.
+* **Backend (`flux-backend`)** : FastAPI orchestré par Gunicorn avec 4 workers Uvicorn sur `127.0.0.1:8000`.
+* **Frontend (`flux-frontend`)** : React SPA compilé et servi par Nginx Alpine sur `127.0.0.1:3000`.
+
+Pour le reverse proxy du serveur hôte, un modèle de configuration prêt à l'emploi est disponible dans `nginx-host.conf.example`.
+
+## Démarrage en Développement Local
 docker run -d --name flux-postgres -p 127.0.0.1:5435:5432 -e POSTGRES_DB=flux_db -e POSTGRES_USER=flux_user -e POSTGRES_PASSWORD=flux_password postgres:16-alpine
 
 # 2. Backend

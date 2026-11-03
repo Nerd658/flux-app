@@ -1,0 +1,75 @@
+# ==============================================================================
+# Configuration Nginx pour le serveur hote (Reverse Proxy)
+# Emplacement suggere : /etc/nginx/sites-available/flux-app.conf
+# Activation : ln -s /etc/nginx/sites-available/flux-app.conf /etc/nginx/sites-enabled/
+# Verification : nginx -t && systemctl reload nginx
+# ==============================================================================
+
+# Redirection automatique HTTP vers HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name flux.orange.bf; # Remplacer par le nom de domaine de votre serveur
+
+    return 301 https://$host$request_uri;
+}
+
+# Serveur HTTPS principal
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name flux.orange.bf; # Remplacer par le nom de domaine de votre serveur
+
+    # Certificats SSL d'entreprise (PKI Orange)
+    ssl_certificate /etc/ssl/certs/flux.orange.bf.crt;
+    ssl_certificate_key /etc/ssl/private/flux.orange.bf.key;
+
+    # Parametres SSL modernes et securises
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+
+    # En-tetes de securite stricts (HSTS, Anti-Sniff, Anti-Clickjacking)
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Taille maximale des requetes (pour les uploads de pieces jointes et PDFs)
+    client_max_body_size 25M;
+
+    # 1. Routage vers l'API Backend (FastAPI / Gunicorn)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Gestion des cookies et headers HTTP
+        proxy_pass_header Set-Cookie;
+        proxy_buffering off;
+        proxy_read_timeout 60s;
+        proxy_connect_timeout 10s;
+    }
+
+    # 2. Routage vers le Frontend (React SPA)
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 30s;
+        proxy_connect_timeout 10s;
+    }
+}
