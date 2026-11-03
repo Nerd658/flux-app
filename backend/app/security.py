@@ -70,11 +70,11 @@ def set_session_cookies(response: Response, token: str) -> None:
     same_site = "strict" if secure else "lax"
     max_age = settings.access_token_minutes * 60
     response.set_cookie(ACCESS_COOKIE, token, max_age=max_age, httponly=True,
-                        secure=secure, samesite=same_site, path="/api")
+                        secure=secure, samesite=same_site, path="/")
     response.set_cookie(CSRF_COOKIE, secrets.token_urlsafe(32), max_age=max_age,
                         httponly=False, secure=secure, samesite=same_site, path="/")
 
 
 def clear_session_cookies(response: Response) -> None:
-    response.delete_cookie(ACCESS_COOKIE, path="/api")
+    response.delete_cookie(ACCESS_COOKIE, path="/")
     response.delete_cookie(CSRF_COOKIE, path="/")

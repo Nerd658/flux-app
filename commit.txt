@@ -1,16 +1,16 @@
-[2026-11-03] - Initialisation automatique et idempotente des tables au demarrage de FastAPI
+[2026-11-03] - Ajustement du path des cookies de session a la racine '/'
 
 What changed:
-- backend/app/main.py :
-  * Execution automatique de 'seed.run()' dans le lifespan de l'application FastAPI.
-  * Cree automatiquement toutes les tables (Base.metadata.create_all), applique les migrations (migrate_schema) et injecte les referentiels initiaux si la base de donnees PostgreSQL demarre completement vide.
+- backend/app/security.py :
+  * 'ACCESS_COOKIE' (access_token) est desormais positionne avec 'path="/"' (au lieu de 'path="/api"').
+  * 'clear_session_cookies' supprime egalement sur 'path="/"'.
 
 Why:
-- Resout l'erreur 'relation "users" does not exist' sur un conteneur neuf ou une base PostgreSQL neuve sans necessiter d'intervention manuelle pour executer 'python -m app.seed'.
+- Garantit l'envoi systematique du cookie de session par tous les navigateurs (Chrome, Firefox, Safari) sans risque de rejet ou d'incompatibilite liee au scoping de chemin '/api' derriere un reverse proxy Nginx.
 
 Files affected:
-- backend/app/main.py - Appel de seed.run() au boot
+- backend/app/security.py - Scope path="/" pour les cookies
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
-- None. L'operation est 100% idempotente (si les tables et donnees existent deja, rien n'est ecrase).
+- None.
