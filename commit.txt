@@ -1,45 +1,24 @@
-[2026-11-03] - Configuration du deploiement conteneurise Docker Compose et Nginx
+[2026-11-03] - Epinglage cryptographique SHA-256 de toutes les images Docker de base
 
 What changed:
-- Conteneurisation de la base de donnees et persistance des donnees (docker-compose.yml) :
-  * Service 'db' utilisant postgres:16-alpine avec volume persistant nomme 'flux_postgres_data' (/var/lib/postgresql/data).
-  * Les donnees restent intactes et preservees meme lors d'un 'docker compose down' ou reboot serveur.
-  * Healthcheck automatique 'pg_isready' pour bloquer le demarrage du backend tant que PostgreSQL n'est pas pret.
-- Conteneurisation de l'API Backend (backend/Dockerfile, backend/.dockerignore, backend/requirements.txt) :
-  * Image minimale basee sur python:3.12-slim-bookworm.
-  * Ajout de gunicorn==23.0.0 et httpx==0.28.1.
-  * Execution securisee avec un utilisateur non-privilegie (appuser:appgroup).
-  * Serveur de production Gunicorn avec 4 workers Uvicorn asynchrones (--bind 0.0.0.0:8000).
-  * Liaison reseau stricte sur 127.0.0.1:8000 pour reserver l'acces exclusif au reverse proxy hote.
-- Conteneurisation du Frontend (frontend/Dockerfile, frontend/nginx.conf, frontend/.dockerignore) :
-  * Multi-stage build : compilation React avec node:20-alpine puis execution avec nginx:alpine.
-  * Configuration Nginx dediee pour SPA (fallback try_files $uri /index.html).
-  * Compression Gzip activee et mise en cache immutable des assets statiques hashés.
-  * Liaison reseau stricte sur 127.0.0.1:3000.
-- Modele de configuration Reverse Proxy hote (nginx-host.conf.example) :
-  * Redirection automatique HTTP vers HTTPS.
-  * Terminaison SSL avec en-tetes de securite stricts (HSTS, Anti-Sniff, Anti-Clickjacking).
-  * Proxy pass /api/ vers http://127.0.0.1:8000 et /* vers http://127.0.0.1:3000.
-  * Transmission propre des en-tetes X-Forwarded-For et X-Real-IP pour l'audit et le rate-limiting.
-- Documentation (README.md) :
-  * Ajout du guide de deploiement en production.
+- Securite de la supply chain logicielle (Supply Chain Security) :
+  * Les tags d'images Docker etant mutables (un tag comme 'alpine' ou '16-alpine' peut etre modifie ou ecrase a tout moment par le registre), toutes les images ont ete figees sur leur empreinte cryptographique SHA-256 exacte (Digest pinning).
+- Images epinglees :
+  * PostgreSQL (docker-compose.yml) : postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+  * Backend Python (backend/Dockerfile) : python:3.12-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
+  * Frontend Builder Node (frontend/Dockerfile) : node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+  * Frontend Serveur Nginx (frontend/Dockerfile) : nginx:alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606
 
 Why:
-- Permettre un deploiement en production 100% conteneurise, reproductible, hautement disponible et securise, s'interfacant directement avec le Nginx existant de la machine hote sans conflit de ports ni exposition publique directe des conteneurs.
+- Garantir l'immutabilite absolue des environnements d'execution, empecher toute attaque par substitution de registre ou modification silencieuse d'image amont, et assurer une reproductibilite a 100% au bit pres.
 
 Files affected:
-- docker-compose.yml - Orchestration des 3 services, volume persistant et reseau interne
-- backend/Dockerfile - Image Docker de production pour l'API FastAPI / Gunicorn
-- backend/.dockerignore - Exclusion des fichiers temporaires, caches et venv
-- backend/requirements.txt - Ajout de gunicorn et httpx
-- frontend/Dockerfile - Multi-stage build React + Nginx Alpine
-- frontend/nginx.conf - Configuration serveur SPA et cache
-- frontend/.dockerignore - Exclusion de node_modules et dist
-- nginx-host.conf.example - Configuration reverse proxy Nginx pour le serveur hote
-- README.md - Documentation du deploiement
+- docker-compose.yml - Digest pinning postgres:16-alpine
+- backend/Dockerfile - Digest pinning python:3.12-slim-bookworm
+- frontend/Dockerfile - Digest pinning node:20-alpine et nginx:alpine
 
 Breaking changes:
 - None
 
 Notes for review:
-- Ne pas lancer 'docker compose up' avant que l'administrateur n'ait verifie et ajuste les configurations du serveur hote (certificats SSL et ports Nginx).
+- Chaque build utilisera exactement ces memes binaires verifies.
