@@ -14,42 +14,22 @@ logger = logging.getLogger("oline")
 class OlineService:
     @classmethod
     def _format_description(cls, req: FluxRequest) -> str:
-        lines_desc = []
+        justifications = []
         for l in req.lines:
-            ports = f" Ports: {l.dst_ports}" if l.dst_ports else ""
-            lines_desc.append(
-                f"- Ligne {l.numero}: [{l.src_ip}] ({l.src_zone}) -> [{l.dst_ip}] ({l.dst_zone}) "
-                f"| Proto: {l.protocole}{ports} | Accès: {l.type_acces} | App: {l.dst_app} "
-                f"| Justif: {l.justification}"
-            )
-        flows_text = "\n".join(lines_desc)
+            if l.justification and l.justification.strip():
+                if len(req.lines) > 1:
+                    justifications.append(f"- Flux {l.numero} : {l.justification.strip()}")
+                else:
+                    justifications.append(l.justification.strip())
 
-        validations_desc = []
-        labels = {1: "Manager de département", 2: "Validateur Technique", 3: "RSSI"}
-        for v in req.validations:
-            validations_desc.append(
-                f"- {labels.get(v.niveau, f'Niveau {v.niveau}')} ({v.validateur.display_name if v.validateur else 'Validateur'}): "
-                f"{v.decision.value.upper()} le {v.decided_at.strftime('%d/%m/%Y %H:%M UTC')}"
-            )
-        val_text = "\n".join(validations_desc)
-
-        dates_text = (
-            f"Du {req.date_debut} au {req.date_fin}"
-            if req.periode.value == "temporaire"
-            else f"À partir du {req.date_debut} (Permanente)"
-        )
+        justif_text = "\n".join(justifications) if justifications else "Ouverture de flux réseau validée par le RSSI."
 
         return (
-            f"DEMANDE D'OUVERTURE DE FLUX : {req.reference}\n"
-            f"Type d'ouverture : {req.flux_type_label}\n"
-            f"Demandeur : {req.dem_prenom} {req.dem_nom.upper()} ({req.dem_email} - {req.dem_telephone})\n"
-            f"Direction : {req.departement}\n"
-            f"Manager : {req.mgr_prenom} {req.mgr_nom.upper()} ({req.mgr_email})\n"
-            f"Période : {dates_text}\n"
-            f"Sceau d'intégrité SHA-256 : {req.content_hash}\n\n"
-            f"VALIDATIONS EFFECTUÉES :\n{val_text}\n\n"
-            f"FLUX RÉSEAU DEMANDÉS ({len(req.lines)}) :\n{flows_text}\n\n"
-            f"(Document officiel PDF avec signatures électroniques Ed25519 joint en pièce jointe du ticket)"
+            f"Justification :\n"
+            f"{justif_text}\n\n"
+            f"Référence : {req.reference}\n"
+            f"Sceau d'intégrité : {req.content_hash}\n\n"
+            f"(Le détail complet des règles de flux et des signatures électroniques est consigné dans le document PDF scellé en pièce jointe)"
         )
 
     @classmethod
