@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     seed_password: str | None = None
     environment: str = "dev"
+    cookie_secure: bool | None = None
 
     # Authentification : « local » (comptes fictifs, en attendant l'AD) ou « ldap » / « ad » (Active Directory)
     auth_mode: Literal["local", "ldap", "ad"] = "local"

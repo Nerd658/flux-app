@@ -1,65 +1,24 @@
-[2026-11-03] - Ajout du statut professionnel et prefixation [TEST] des tickets Oline en dev
+[2026-11-03] - Configuration Nginx hote HTTP port 80 pour acces direct par IP et support COOKIE_SECURE
 
 What changed:
-- Creation de l'enumeration StatutProfessionnel (employe, prestataire, stagiaire) :
-  * Modele User : ajout de la colonne 'statut_pro' (nullable pour declencher automatiquement la finalisation sur les profils existants).
-  * Modele FluxRequest : ajout de la colonne figee 'dem_statut_pro' (instantané a la soumission de la demande).
-- Schema et controle d'acces Pydantic :
-  * 'UserOut.profil_incomplet' evalue a True si 'statut_pro' est manquant, forcant l'ouverture automatique du modal des la connexion.
-  * 'ProfileUpdateIn' impose la selection du statut professionnel valide (employe, prestataire, stagiaire).
-  * 'RequestDetail', 'RequestSummary', 'PublicVerifyOut' et 'UserAdminOut' exposent le statut du demandeur.
-- Sceau cryptographique et tracabilite :
-  * 'seal.py' integre 'dem_statut_pro' dans le tuple canonique SHA-256 de calcul de l'empreinte ('content_hash').
-  * 'pdf.py' affiche le statut professionnel du demandeur sur le document PDF officiel.
-- Integration Oline / iTop et differenciation DEV / PROD :
-  * Lorsque l'environnement est hors production ('ENVIRONMENT != "prod"', par exemple 'ENVIRONMENT=dev') :
-    - Le titre du ticket Oline est automatiquement prefixe par '[TEST][Flux] ...'.
-    - Un avertissement explicite est insere en debut de description pour empecher tout deploiement accidentel par l'equipe reseau.
-  * En environnement de production ('ENVIRONMENT=prod') :
-    - Le titre officiel sans prefixe de test '[Flux] ...' est conserve.
-  * Mention nominative et statut professionnel du demandeur inclus dans la description du ticket Oline.
-- Migration idempotente :
-  * Ajout de 'migrate_schema' dans 'app/database.py' (ALTER TABLE ADD COLUMN IF NOT EXISTS pour SQLite et PostgreSQL) execute au demarrage FastAPI (lifespan) et dans le seed.
-- Interface React :
-  * 'ProfileModal' : ajout d'une liste deroulante obligatoire pour choisir son statut professionnel.
-  * 'UserMenu' : affichage du statut professionnel dans l'en-tete utilisateur.
-  * 'NewRequest' : recapitulatif du statut professionnel dans le bloc demandeur.
-  * 'RequestView' : badge du statut du demandeur dans la vue detaillee de la demande.
-  * 'admin/Users' : colonne et affichage du statut professionnel dans le tableau des comptes.
-- Docker et compilation :
-  * 'frontend/Dockerfile' : passage de l'etape builder a 'node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0' pour resoudre la dependance glibc de Vite/lightningcss lors du build en conteneur.
-- Tests :
-  * Ajout de 'tests/test_statut_professionnel.py' validant le blocage de profil incomplet, la mise a jour de profil, le figeage sur la demande et le formatage Oline.
-  * Mise a jour de 'tests/test_oline_integration.py'.
-  * Suite complete : 38/38 tests valides.
+- Nginx Hote (nginx-host.conf.example) :
+  * Simplification de la configuration pour un acces direct par IP sans nom de domaine ni SSL (HTTP port 80 avec server_name _).
+  * Routage de /api/ vers 127.0.0.1:8000 et / vers le frontend conteneurise sur 127.0.0.1:3000.
+  * Section HTTPS documentee et commentee pour activation ulterieure lors de l'obtention du nom de domaine et des certificats.
+- Securite des sessions sur HTTP non chiffre :
+  * Ajout du reglage 'cookie_secure' dans config.py et security.py pour eviter le blocage des cookies d'authentification sur une connexion HTTP directe par IP (attribut SameSite=Lax et Secure=False lorsque non HTTPS).
 
 Why:
-- Repondre au besoin metier d'identification formelle de la nature du contrat de travail de chaque demandeur d'acces reseau, et securiser les tests sur Oline pour eviter toute confusion avec les tickets d'exploitation reelle.
+- Permettre un deploiement et des tests immediats sur le serveur distant en utilisant uniquement son adresse IP sur le port 80 standard, avant la mise en place du DNS et des certificats SSL.
 
 Files affected:
-- backend/app/models.py - Enum StatutProfessionnel et colonnes statut_pro / dem_statut_pro
-- backend/app/schemas.py - Validation et exposition du statut_pro
-- backend/app/seal.py - Prise en compte du statut professionnel dans le sceau canonique
-- backend/app/pdf.py - Affichage du statut professionnel dans le PDF scelle
-- backend/app/seed.py - Données initiales et migration
-- backend/app/database.py - Fonction migrate_schema idempotente
-- backend/app/main.py - Execution de migrate_schema au demarrage
-- backend/app/routers/public.py - Exposition du statut sur le portail de verification
-- backend/app/services/auth_service.py - Enregistrement et audit trail du statut utilisateur
-- backend/app/services/request_service.py - Figeage du statut demandeur a la soumission
-- backend/app/services/oline_service.py - Prefixation [TEST][Flux] en mode dev et mention du statut
-- backend/tests/test_oline_integration.py - Test du titre avec prefixe de dev
-- backend/tests/test_statut_professionnel.py - Tests automatises du cycle de vie du statut
-- frontend/Dockerfile - Ajustement glibc builder pour compilation Vite sans erreur
-- frontend/src/App.jsx - Selection obligatoire dans ProfileModal et affichage UserMenu
-- frontend/src/pages/NewRequest.jsx - Affichage du statut demandeur
-- frontend/src/components/RequestView.jsx - Affichage du statut dans la vue demande
-- frontend/src/pages/admin/Users.jsx - Colonne Statut pro dans l'administration des utilisateurs
-- README.md - Documentation du statut professionnel obligatoire
+- nginx-host.conf.example - Configuration HTTP port 80 sur IP directe
+- backend/app/config.py - Ajout de la variable cookie_secure
+- backend/app/security.py - Support flexible du flag Secure et SameSite pour cookies HTTP sur IP
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
-- None. Les utilisateurs existants sans statut renseigne sont simplement invites a finaliser leur profil a leur prochaine connexion.
+- None.
 
 Notes for review:
-- Verifier la presence de [TEST] dans le titre des tickets Oline crees lors des tests manuels avec ENVIRONMENT=dev.
+- Si le serveur distant est accede en HTTP sur son IP avec ENVIRONMENT=prod, s'assurer que COOKIE_SECURE=false est defini dans backend/.env jusqu'a la mise en place de HTTPS.
