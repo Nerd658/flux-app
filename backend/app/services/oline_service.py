@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.audit import audit
+from app.config import get_settings
 from app.models import FluxRequest
 from app.oline import Oline, OlineError
 from app.pdf import build_pdf
@@ -30,7 +31,17 @@ class OlineService:
             else "Employé"
         )
 
+        settings = get_settings()
+        is_dev = settings.environment.lower() != "prod"
+        warning = (
+            "*** ATTENTION : DEMANDE DE TEST (ENVIRONNEMENT DE DEVELOPPEMENT) ***\n"
+            "*** NE PAS APPLIQUER SUR LES PARE-FEUX ET EQUIPEMENTS RESEAU ***\n\n"
+            if is_dev
+            else ""
+        )
+
         return (
+            f"{warning}"
             f"Demandeur : {req.dem_prenom} {req.dem_nom.upper()} ({statut_label})\n"
             f"Direction : {req.departement}\n"
             f"Justification :\n"
@@ -48,7 +59,10 @@ class OlineService:
             logger.info("Oline non configuré (OLINE_URL ou OLINE_API_KEY absent) : création de ticket ignorée")
             return None
 
-        title = f"[Flux] {req.flux_type_label} - {req.reference} - {req.dem_nom.upper()}"
+        settings = get_settings()
+        is_dev = settings.environment.lower() != "prod"
+        prefix = "[TEST][Flux]" if is_dev else "[Flux]"
+        title = f"{prefix} {req.flux_type_label} - {req.reference} - {req.dem_nom.upper()}"
         description = cls._format_description(req)
 
         ticket = None

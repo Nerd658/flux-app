@@ -1,4 +1,4 @@
-[2026-11-03] - Ajout du statut professionnel du demandeur et persistance sur les demandes
+[2026-11-03] - Ajout du statut professionnel et prefixation [TEST] des tickets Oline en dev
 
 What changed:
 - Creation de l'enumeration StatutProfessionnel (employe, prestataire, stagiaire) :
@@ -11,7 +11,13 @@ What changed:
 - Sceau cryptographique et tracabilite :
   * 'seal.py' integre 'dem_statut_pro' dans le tuple canonique SHA-256 de calcul de l'empreinte ('content_hash').
   * 'pdf.py' affiche le statut professionnel du demandeur sur le document PDF officiel.
-  * 'oline_service.py' ajoute la mention nominative et le statut du demandeur dans la description du ticket Oline / iTop.
+- Integration Oline / iTop et differenciation DEV / PROD :
+  * Lorsque l'environnement est hors production ('ENVIRONMENT != "prod"', par exemple 'ENVIRONMENT=dev') :
+    - Le titre du ticket Oline est automatiquement prefixe par '[TEST][Flux] ...'.
+    - Un avertissement explicite est insere en debut de description pour empecher tout deploiement accidentel par l'equipe reseau.
+  * En environnement de production ('ENVIRONMENT=prod') :
+    - Le titre officiel sans prefixe de test '[Flux] ...' est conserve.
+  * Mention nominative et statut professionnel du demandeur inclus dans la description du ticket Oline.
 - Migration idempotente :
   * Ajout de 'migrate_schema' dans 'app/database.py' (ALTER TABLE ADD COLUMN IF NOT EXISTS pour SQLite et PostgreSQL) execute au demarrage FastAPI (lifespan) et dans le seed.
 - Interface React :
@@ -23,10 +29,12 @@ What changed:
 - Docker et compilation :
   * 'frontend/Dockerfile' : passage de l'etape builder a 'node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0' pour resoudre la dependance glibc de Vite/lightningcss lors du build en conteneur.
 - Tests :
-  * Ajout de 'tests/test_statut_professionnel.py' validant le blocage de profil incomplet, la mise a jour de profil, le figeage sur la demande et le formatage Oline. Suite complete : 38/38 tests valides.
+  * Ajout de 'tests/test_statut_professionnel.py' validant le blocage de profil incomplet, la mise a jour de profil, le figeage sur la demande et le formatage Oline.
+  * Mise a jour de 'tests/test_oline_integration.py'.
+  * Suite complete : 38/38 tests valides.
 
 Why:
-- Repondre au besoin metier d'identification formelle de la nature du contrat de travail de chaque demandeur d'acces reseau, avec tracabilite inalterable des la soumission.
+- Repondre au besoin metier d'identification formelle de la nature du contrat de travail de chaque demandeur d'acces reseau, et securiser les tests sur Oline pour eviter toute confusion avec les tickets d'exploitation reelle.
 
 Files affected:
 - backend/app/models.py - Enum StatutProfessionnel et colonnes statut_pro / dem_statut_pro
@@ -39,7 +47,8 @@ Files affected:
 - backend/app/routers/public.py - Exposition du statut sur le portail de verification
 - backend/app/services/auth_service.py - Enregistrement et audit trail du statut utilisateur
 - backend/app/services/request_service.py - Figeage du statut demandeur a la soumission
-- backend/app/services/oline_service.py - Mention du statut dans les tickets Oline
+- backend/app/services/oline_service.py - Prefixation [TEST][Flux] en mode dev et mention du statut
+- backend/tests/test_oline_integration.py - Test du titre avec prefixe de dev
 - backend/tests/test_statut_professionnel.py - Tests automatises du cycle de vie du statut
 - frontend/Dockerfile - Ajustement glibc builder pour compilation Vite sans erreur
 - frontend/src/App.jsx - Selection obligatoire dans ProfileModal et affichage UserMenu
@@ -53,4 +62,4 @@ Breaking changes:
 - None. Les utilisateurs existants sans statut renseigne sont simplement invites a finaliser leur profil a leur prochaine connexion.
 
 Notes for review:
-- Verifier la saisie dans ProfileModal lors de la premiere connexion d'un demandeur.
+- Verifier la presence de [TEST] dans le titre des tickets Oline crees lors des tests manuels avec ENVIRONMENT=dev.

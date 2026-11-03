@@ -1,7 +1,10 @@
 import os
 import secrets
+import sys
 from datetime import date, timedelta
 from unittest.mock import MagicMock
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 os.environ.update({
     "DATABASE_URL": "sqlite:///./test_statut.db",
@@ -10,6 +13,9 @@ os.environ.update({
     "SEED_PASSWORD": "Test-Pass-123",
     "AUTH_MODE": "local",
 })
+
+from app.config import get_settings
+get_settings.cache_clear()
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,13 +32,11 @@ PWD = "Test-Pass-123"
 
 @pytest.fixture(scope="module", autouse=True)
 def db():
-    if os.path.exists("test_statut.db"):
-        os.remove("test_statut.db")
+    from app.database import Base, engine
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     seed.run()
     yield
-    engine.dispose()
-    if os.path.exists("test_statut.db"):
-        os.remove("test_statut.db")
 
 
 def client(cuid: str) -> TestClient:
@@ -148,5 +152,6 @@ def test_oline_description_includes_statut_pro():
     req.content_hash = "1234567890abcdef"
 
     desc = OlineService._format_description(req)
+    assert "*** ATTENTION : DEMANDE DE TEST" in desc
     assert "Demandeur : Salif TRAORE (Prestataire)" in desc
     assert "Direction : Direction CX" in desc

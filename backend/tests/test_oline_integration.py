@@ -64,7 +64,7 @@ def test_oline_service_success_with_caller():
         assert ticket_ref == "R-000101"
         assert req.ticket_ref == "R-000101"
         mock_inst.create_ticket.assert_called_once_with(
-            title="[Flux] Interne - FLUX-2026-TEST - DUPONT",
+            title="[TEST][Flux] Interne - FLUX-2026-TEST - DUPONT",
             description=mock_oline_cls.return_value.create_ticket.call_args[1]["description"],
             org_id="Direction Informatique",
             caller_id="jean.dupont@societe.bf",
