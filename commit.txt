@@ -1,46 +1,21 @@
-[2026-11-03] - Gestion multi-managers par direction et verrouillage strict anti-contournement
+[2026-11-03] - Support de l'authentification locale des comptes validateurs hors annuaire AD
 
 What changed:
-- Modele de donnees et migration (backend/app/models.py) :
-  * Extension du champ manager_cuid de la table directions de VARCHAR(32) a VARCHAR(255).
-  * Ajout de la propriete helper Direction.authorized_managers pour parser et normaliser les CUIDs multiples.
-- Schemas et services backend (backend/app/schemas.py, backend/app/services/referential_service.py) :
-  * Creation du schema ManagerInfoOut et enrichissement de DirectionOut et LabelUsageOut avec la liste des managers resolus.
-  * Resolution automatique des identites et coordonnees des managers (nom, prenom, email, telephone) pour chaque direction.
-  * Validation assouplie de manager_cuid pour accepter les listes de CUIDs separes par des virgules ou points-virgules.
-- Verrouillage anti-contournement a la soumission (backend/app/services/request_service.py) :
-  * Ajout de _resolve_and_validate_manager executant 4 verifications critiques cote serveur :
-    1. Si la direction a des managers assignes, controle strict que le manager selectionne fait partie de la liste autorisee.
-    2. Si plusieurs managers sont assignes a la direction, interdiction de soumettre sans selection explicite.
-    3. Rejet strict si le demandeur tente de s'auto-designer comme manager (anti-auto-validation).
-    4. Rejet strict si le compte selectionne ne possede pas le role manager (Role.manager) ou admin.
-  * Auto-remplissage garanti des coordonnees officielles du manager depuis la base de donnees pour eviter l'usurpation de contacts.
-- Interface d'administration des referentiels (frontend/src/pages/admin/Referentials.jsx) :
-  * Support de la saisie de plusieurs CUIDs de managers par direction (ex: MGR00001, MGR00002).
-  * Affichage de la liste des managers associes avec leurs noms complets dans le tableau.
-- Formulaire de demande (frontend/src/pages/NewRequest.jsx) :
-  * Si la direction possede 1 manager : pre-remplissage et assignation automatiques.
-  * Si la direction possede plusieurs managers (ex: DRSI) : affichage dynamique d'un menu deroulant de selection du responsable habilité.
-  * Mise a jour automatique et pre-remplissage des champs du manager selectionne.
-- Suite de tests unitaires et d'integration (backend/tests/test_multi_managers.py) :
-  * 5 nouveaux tests validant la restitution multi-managers, l'acceptation des managers autorises, et le rejet systematique des contournements (CUID non autorise, demandeur lambda, auto-designation). Total suite : 34 tests passants (0 echec).
+- Authentification hybride AD / Local (backend/app/services/auth_service.py) :
+  * Lorsque l'application est connectee a l'annuaire d'entreprise (Active Directory), les comptes de test et de validation non presents dans l'annuaire AD (ex: MGR00001, MGR00002, SECU0001, RSSI0001) peuvent desormais s'authentifier avec leur mot de passe applicatif local.
+  * Maintien strict de la securite pour les comptes demandeurs AD : seuls les comptes avec un mot de passe local valide (different de "!annuaire") et possedant un role de validateur (manager, securite, rssi, admin) sont autorises en fallback local.
+  * Les vrais collaborateurs de l'entreprise (ex: LHGL6650) continuent de s'authentifier a 100% sur l'Active Directory d'Orange avec leurs identifiants de session d'entreprise.
+- Validation des tests :
+  * 34 tests unitaires et de flux valides (34 passed, 0 failed).
 
 Why:
-- Repondre aux cas reels d'entreprises ou une direction regroupe plusieurs departements avec des chefs differents, tout en garantissant l'hermeticite absolue du processus de validation contre toute collusion ou tentative de contournement.
+- Permettre d'effectuer le test de bout en bout avec les comptes de validation metier (MGR00001, SECU0001, RSSI0001) sans bloquer sur l'annuaire Active Directory de l'entreprise qui ne contient evidemment pas ces comptes de test.
 
 Files affected:
-- backend/app/models.py - Extension manager_cuid a 255 caracteres et helper authorized_managers
-- backend/app/schemas.py - ManagerInfoOut, validation regex multi-CUIDs
-- backend/app/services/referential_service.py - Resolution des comptes managers par direction
-- backend/app/services/request_service.py - Controles serveur anti-contournement et assignation
-- backend/app/routers/referentiels.py - Normalisation des CUIDs a la creation de direction
-- backend/tests/test_multi_managers.py - Tests automatises multi-managers et anti-bypass
-- frontend/src/pages/admin/Referentials.jsx - Interface admin multi-CUIDs
-- frontend/src/pages/NewRequest.jsx - Selection dynamique et pre-remplissage du responsable
+- backend/app/services/auth_service.py - Fallback d'authentification locale pour les validateurs hors AD
 
 Breaking changes:
 - None
 
 Notes for review:
-- Verifier dans /admin/referentiels qu'une direction peut recevoir plusieurs CUIDs separes par une virgule.
-- Verifier dans /demandes/nouvelle que le menu deroulant du responsable apparait bien pour les directions multi-managers.
+- Les comptes MGR00001, MGR00002, SECU0001 et RSSI0001 se connectent desormais directement avec le mot de passe Test2026App meme lorsque la connexion AD est activee.

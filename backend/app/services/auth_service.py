@@ -139,8 +139,24 @@ class AuthService:
                 raise HTTPException(
                     status.HTTP_503_SERVICE_UNAVAILABLE, "Annuaire indisponible, reessayez plus tard"
                 )
-            user = cls.sync_from_directory(db, ident) if ident else None
-            mode = "annuaire"
+            if ident:
+                user = cls.sync_from_directory(db, ident)
+                mode = "annuaire"
+            else:
+                # Si le compte n'existe pas dans l'annuaire d'entreprise (ex: comptes de validation/test MGR00001, SECU0001, RSSI0001),
+                # on permet la connexion locale aux comptes validateurs/admin possedant un mot de passe applicatif valide
+                local_user = db.scalar(select(User).where(User.cuid == cuid))
+                if (
+                    local_user
+                    and local_user.role in (Role.manager, Role.securite, Role.rssi, Role.admin)
+                    and local_user.password_hash
+                    and local_user.password_hash != NO_LOCAL_PASSWORD
+                    and verify_password(password, local_user.password_hash)
+                ):
+                    user = local_user
+                    mode = "local"
+                else:
+                    user = None
         else:
             user = db.scalar(select(User).where(User.cuid == cuid))
             ok = verify_password(password, user.password_hash if user else None)
