@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { homeFor, useAuth } from "../auth.js";
 import { Notice } from "../components/ui.jsx";
@@ -81,6 +81,11 @@ export default function Login({ expired = false }) {
           {busy ? "Connexion en cours…" : "Se connecter"}
         </button>
         <p className="login-help">Mot de passe oublié ? Contactez l'administrateur de la plateforme.</p>
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <Link to="/verifier" className="login-verify-link">
+            Vérifier l'authenticité d'une demande de flux
+          </Link>
+        </div>
       </form>
     </div>
   );

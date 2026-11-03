@@ -139,8 +139,9 @@ def _make_canvas(req: RequestDetail):
             self.line(MARGIN, 11 * mm, w - MARGIN, 11 * mm)
             self.setFont("Helvetica", 6.5)
             self.setFillColor(INK_2)
-            self.drawString(MARGIN, 7 * mm, f"Sceau d'intégrité SHA-256 : {req.content_hash}")
-            self.drawRightString(w - MARGIN, 7 * mm, f"{req.reference}  ·  Généré le {generated}  ·  Page {self._pageNumber} / {total}")
+            ticket_info = f"  ·  Ticket Oline : {req.ticket_ref}" if getattr(req, "ticket_ref", None) else ""
+            self.drawString(MARGIN, 7 * mm, f"Sceau SHA-256 : {req.content_hash}{ticket_info}")
+            self.drawRightString(w - MARGIN, 7 * mm, f"{req.reference}  ·  Vérifiable sur /verifier  ·  Page {self._pageNumber} / {total}")
 
     return PageCanvas
 

@@ -7,26 +7,37 @@ import NewRequest from "./pages/NewRequest.jsx";
 import MyRequests from "./pages/MyRequests.jsx";
 import RequestPage from "./pages/RequestPage.jsx";
 import Validation from "./pages/Validation.jsx";
+import Verify from "./pages/Verify.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminUsers from "./pages/admin/Users.jsx";
 import AdminReferentials from "./pages/admin/Referentials.jsx";
 import AdminAudit from "./pages/admin/Audit.jsx";
 import { ErrorBanner, Field, Modal, ToastProvider, useToast } from "./components/ui.jsx";
 import {
-  BrandMark, IconChevronDown, IconGrid, IconHistory, IconLayers, IconList, IconLogout,
+  BrandMark, IconChevronDown, IconFileCheck, IconGrid, IconHistory, IconLayers, IconList, IconLogout,
   IconPencil, IconPlus, IconShield, IconUsers,
 } from "./components/icons.jsx";
 
 // Menu par rôle : chacun ne voit que ce qu'il a le droit de faire (l'API reste l'autorité)
-const VALIDATOR_NAV = [{ section: "Validation", items: [{ to: "/validation", label: "Demandes à valider", icon: IconShield }] }];
+const VERIFY_SECTION = {
+  section: "Contrôle",
+  items: [{ to: "/verifier", label: "Vérifier un flux", icon: IconFileCheck }],
+};
+const VALIDATOR_NAV = [
+  { section: "Validation", items: [{ to: "/validation", label: "Demandes à valider", icon: IconShield }] },
+  VERIFY_SECTION,
+];
 const NAV = {
-  demandeur: [{
-    section: "Demandes",
-    items: [
-      { to: "/nouvelle-demande", label: "Nouvelle demande", icon: IconPlus },
-      { to: "/mes-demandes", label: "Mes demandes", icon: IconList },
-    ],
-  }],
+  demandeur: [
+    {
+      section: "Demandes",
+      items: [
+        { to: "/nouvelle-demande", label: "Nouvelle demande", icon: IconPlus },
+        { to: "/mes-demandes", label: "Mes demandes", icon: IconList },
+      ],
+    },
+    VERIFY_SECTION,
+  ],
   manager: VALIDATOR_NAV,
   securite: VALIDATOR_NAV,
   rssi: VALIDATOR_NAV,
@@ -48,6 +59,7 @@ const NAV = {
         { to: "/admin/audit", label: "Journal d'audit", icon: IconHistory },
       ],
     },
+    VERIFY_SECTION,
   ],
 };
 
@@ -57,6 +69,7 @@ const CRUMBS = [
   ["/mes-demandes", "Demandes", "Mes demandes"],
   ["/validation", "Validation", "Demandes à valider"],
   ["/demandes/:id", "Demandes", "Détail de la demande"],
+  ["/verifier", "Contrôle", "Vérification d'authenticité"],
   ["/admin", "Pilotage", "Tableau de bord"],
   ["/admin/demandes", "Pilotage", "Toutes les demandes"],
   ["/admin/utilisateurs", "Administration", "Utilisateurs"],
@@ -336,6 +349,7 @@ export default function App() {
       <ToastProvider>
         {!user ? (
           <Routes>
+            <Route path="/verifier" element={<Verify />} />
             <Route path="*" element={<Login expired={expired} />} />
           </Routes>
         ) : (
@@ -346,6 +360,7 @@ export default function App() {
               <main className="page-wrap">
                 <Routes>
                   <Route path="/connexion" element={<Navigate to={homeFor(user)} replace />} />
+                  <Route path="/verifier" element={<Verify />} />
                   <Route path="/nouvelle-demande" element={<Guard roles={["demandeur"]}><FreshNewRequest /></Guard>} />
                   <Route path="/mes-demandes" element={<Guard roles={["demandeur"]}><MyRequests /></Guard>} />
                   <Route path="/validation" element={<Guard roles={VALIDATOR_ROLES}><Validation /></Guard>} />

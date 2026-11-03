@@ -289,6 +289,33 @@ class VerifyOut(BaseModel):
     document_fiable: bool
 
 
+class PublicSignatureOut(BaseModel):
+    niveau: int
+    role_label: str
+    validateur_nom: str
+    decision: Decision
+    decided_at: datetime
+    key_fingerprint: str
+    signature_valide: bool
+
+
+class PublicVerifyOut(BaseModel):
+    reference: str
+    ticket_ref: str | None = None
+    flux_type: str
+    statut: Statut
+    demandeur_nom: str
+    departement: str
+    periode: Periode
+    date_debut: date
+    date_fin: date | None = None
+    content_hash: str
+    contenu_intact: bool
+    document_fiable: bool
+    signatures: list[PublicSignatureOut]
+    lines: list[FluxLineOut]
+
+
 # ---------- Administration ----------
 
 class UserAdminOut(BaseModel):

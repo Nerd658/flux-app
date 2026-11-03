@@ -12,7 +12,7 @@ python -m venv .venv && source .venv/bin/activate        # Linux/macOS (.venv\Sc
 pip install -r requirements.txt
 python -m app.seed                                     # tables + données initiales + comptes fictifs
 uvicorn app.main:app --host 127.0.0.1 --port 8000
-pytest -q tests                                        # 27 tests automatisés
+pytest -q tests                                        # 29 tests automatisés
 
 # 3. Frontend
 cd frontend
@@ -60,3 +60,10 @@ L'application intègre un client Oline (`backend/app/oline.py`) pour la généra
 - Création de la demande sous la classe `UserRequest` avec l'organisation (`Direction Informatique`).
 - Description détaillée reprenant le demandeur, le département, les dates et la liste complète des flux demandés.
 - Attachement du PDF scellé et signé électroniquement directement en pièce jointe du ticket.
+
+## Vérification d'authenticité et d'intégrité
+
+Un portail de vérification accessible sur `/verifier` (et via l'API `GET /api/public/verify?q=...`) permet aux ingénieurs réseau et exploitants de contrôler la validité d'une demande avant ouverture sur le pare-feu :
+- Recherche directe par référence de demande (`DOF-2026-000001`) ou par numéro de ticket Oline (`R-211299`).
+- Recalcul de l'empreinte SHA-256 et contrôle mathématique des 3 signatures asymétriques Ed25519 (Manager, Technique, RSSI).
+- Affichage des règles approuvées ou refus clair si la demande n'existe pas ou a été altérée.

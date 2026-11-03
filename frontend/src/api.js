@@ -88,6 +88,7 @@ export const api = {
   all: () => request("/requests/all"),
   get: (rid) => request(`/requests/${id(rid)}`),
   verify: (rid) => request(`/requests/${id(rid)}/verify`),
+  publicVerify: (q) => request(`/public/verify?q=${encodeURIComponent(q)}`),
   decide: (rid, decision, commentaire) =>
     request(`/requests/${id(rid)}/decision`, {
       method: "POST",

@@ -155,6 +155,7 @@ class Oline:
         filename: str = "document.pdf",
         mimetype: str = "application/pdf",
         file_bytes: bytes | None = None,
+        comment: str = "Document officiel PDF joint via API Ouverture de flux",
     ) -> dict[str, Any]:
         """Ajoute une pièce jointe à un ticket existant."""
         if file_bytes is not None:
@@ -168,6 +169,7 @@ class Oline:
         body = {
             "operation": "core/create",
             "class": "Attachment",
+            "comment": comment,
             "fields": {
                 "item_class": "UserRequest",
                 "item_id": ticket_id,

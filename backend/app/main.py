@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.routers import admin, auth, referentiels, requests
+from app.routers import admin, auth, public, referentiels, requests
 from app.security import CSRF_HEADER
 
 settings = get_settings()
@@ -69,6 +69,7 @@ async def unhandled_error(request: Request, exc: Exception):
 app.include_router(auth.router)
 app.include_router(referentiels.router)
 app.include_router(requests.router)
+app.include_router(public.router)
 app.include_router(admin.router)
 
 

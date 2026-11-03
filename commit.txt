@@ -1,39 +1,37 @@
-[2026-11-03] - Automatisation de la creation de tickets Oline et affichage du ticket de suivi
+[2026-11-03] - Portail de verification d authenticite et d integrite par reference ou numero de ticket
 
 What changed:
-- Creation automatique d'un ticket Oline / iTop lors de la validation finale RSSI (Statut.validee) :
-  * Formatage du titre et de la description detaillee de la demande avec ses lignes de flux et validations signees.
-  * Organisation cible fixee a "Direction Informatique".
-  * Tentative nominale avec l'email du demandeur (caller_id) avec resolution directe et sans ambiguite via _resolve_person (gere proprement le cas des homonymes ou multiples comptes avec le meme email dans iTop) ; repli automatique transparent sans caller_id si l'utilisateur n'est pas encore enregistre dans le referentiel iTop.
-  * Generation a la volee et televersement en memoire du document officiel PDF scelle et signe avec les cles Ed25519 en piece jointe du ticket iTop.
-  * Enregistrement de la reference du ticket cree (ticket_ref) sur la demande et journalisation d'audit (TICKET_CREATED / TICKET_CREATION_FAILED).
-  * Robustesse : l'echec de connexion a Oline ne bloque pas la validation de la demande et est trace dans les journaux.
-- Script de test reel de creation de ticket unique sans piece jointe (backend/test_create_ticket.py) valide en production avec succes (Ticket R-211299 cree pour Hassan BIKIENGA).
-- Affichage de la reference du ticket Oline cote frontend :
-  * Badge dedie (ticket-pill) dans l'en-tete de la page detail demande (RequestPage).
-  * Section ticket dans le resume des faits (RequestView).
-  * Affichage de la reference sous le numero de demande dans le tableau de bord (RequestList).
-- Suite de tests unitaires et d'integration Oline (backend/tests/test_oline_integration.py) :
-  * Tests valides couvrant les cas nominaux, le repli sans caller_id et la resilience.
+- Creation de l'API de verification publique sans authentification prealable obligatoire (backend/app/routers/public.py) :
+  * Route GET /api/public/verify?q=... permettant la recherche indifferemment par reference officielle (ex. DOF-2026-000001) ou par numero de ticket Oline (ex. R-211299).
+  * Reponse 404 explicite si la reference ou le ticket n'existe pas ("Aucune demande trouvée pour cette référence ou ce numéro de ticket.").
+  * Verification cryptographique complete a la volee : recalcul du SHA-256 du contenu et verification mathematique de chaque signature Ed25519 avec les cles publiques archivees des validateurs.
+  * Restitution securisee des donnees utiles pour l'ingenieur d'exploitation pare-feu : statut de certification, chaine des 3 validateurs horodatee avec empreintes de cles, et tableau des regles de flux approuvees.
+- Ajout de la page front-end de verification dediee (frontend/src/pages/Verify.jsx) :
+  * Barre de recherche ergonomique avec support direct de l'URL pre-remplie (?q=...).
+  * Bandeau d'authenticite vert (certifie conforme), rouge (sceau rompu ou signatures invalides) ou orange (demande non finalisee).
+  * Affichage des cartes des 3 validateurs (Manager, Technique, RSSI) et des regles reseau autorisees.
+  * Si la demande n'existe pas, rien n'est affiche en dehors du message de refus clair.
+  * Accessible publiquement depuis l'ecran de connexion (/connexion) et integree dans le menu lateral pour les utilisateurs authentifies.
+- Mise a jour du document PDF officiel (backend/app/pdf.py) pour mentionner la reference de verification (/verifier) et le ticket Oline en pied de page.
+- Suite de tests automatises (backend/tests/test_public_verify.py) : 29 tests au total.
 
 Why:
-- Cloture automatique du processus d'ouverture de flux vers l'exploitation reseau des l'accord du RSSI, sans ressaisie manuelle ni fuite de fichier sur le disque.
+- Permettre aux ingenieurs reseau et exploitants de valider l'authenticite et l'integrite absolue d'une demande de flux avant toute application sur le pare-feu, directement avec le numero de ticket Oline ou la reference du document.
 
 Files affected:
-- backend/app/models.py - Colonne ticket_ref (String(64), indexee) sur FluxRequest
-- backend/app/schemas.py - Champ ticket_ref sur RequestSummary et RequestDetail
-- backend/app/oline.py - Resolution robuste d'organisation et de personne, support SSL d'entreprise
-- backend/app/services/oline_service.py - Service metier de synchronisation Oline et gestion des pieces jointes
-- backend/app/services/request_service.py - Appel de synchronisation Oline apres accord RSSI et mapping ticket_ref
-- backend/test_create_ticket.py - Script de verification de creation de ticket nominal
-- backend/tests/test_oline_integration.py - Tests unitaires de validation et resilience Oline
-- frontend/src/styles.css - Classes .ticket-pill et .ticket-pill-sm
-- frontend/src/pages/RequestPage.jsx - Badge de ticket Oline dans le hero
-- frontend/src/components/RequestView.jsx - Bloc information ticket Oline
-- frontend/src/components/RequestList.jsx - Affichage du ticket de suivi sous la reference
+- backend/app/routers/public.py - Endpoint public de verification cryptographique
+- backend/app/schemas.py - Schemas PublicSignatureOut et PublicVerifyOut
+- backend/app/main.py - Enregistrement du router public
+- backend/app/pdf.py - Pied de page PDF avec ticket et lien de verification
+- backend/tests/test_public_verify.py - Tests unitaires de la recherche et verification publique
+- frontend/src/pages/Verify.jsx - Composant de la page de verification
+- frontend/src/pages/Login.jsx - Lien d'acces direct a la verification depuis la connexion
+- frontend/src/App.jsx - Routes et navigation pour le portail de verification
+- frontend/src/api.js - Fonction api.publicVerify
+- frontend/src/styles.css - Styles du portail de verification
 
 Breaking changes:
 - None
 
 Notes for review:
-- Le ticket test R-211299 a ete cree sur Oline pour valider le bon fonctionnement.
+- Tester en saisissant une reference valide ou un ticket Oline, et verifier le message d'erreur si la reference est inexistante.
