@@ -226,12 +226,13 @@ class AuthService:
         return user
 
     @staticmethod
-    def logout(db: Session, user: User, request: Request, response: Response) -> None:
+    def logout(db: Session, user: User | None, request: Request, response: Response) -> None:
         clear_session_cookies(response)
-        audit(
-            db,
-            "LOGOUT",
-            actor_id=user.id,
-            request=request,
-            details={"cuid": user.cuid, "poste": client_agent(request)},
-        )
+        if user:
+            audit(
+                db,
+                "LOGOUT",
+                actor_id=user.id,
+                request=request,
+                details={"cuid": user.cuid, "poste": client_agent(request)},
+            )

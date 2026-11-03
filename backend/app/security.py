@@ -76,5 +76,15 @@ def set_session_cookies(response: Response, token: str) -> None:
 
 
 def clear_session_cookies(response: Response) -> None:
-    response.delete_cookie(ACCESS_COOKIE, path="/")
-    response.delete_cookie(CSRF_COOKIE, path="/")
+    secure = (
+        settings.cookie_secure
+        if settings.cookie_secure is not None
+        else (settings.environment != "dev")
+    )
+    same_site = "strict" if secure else "lax"
+    for path in ("/", "/api"):
+        response.delete_cookie(ACCESS_COOKIE, path=path, httponly=True, secure=secure, samesite=same_site)
+        response.delete_cookie(ACCESS_COOKIE, path=path, httponly=False, secure=secure, samesite=same_site)
+        response.delete_cookie(ACCESS_COOKIE, path=path)
+        response.delete_cookie(CSRF_COOKIE, path=path, httponly=False, secure=secure, samesite=same_site)
+        response.delete_cookie(CSRF_COOKIE, path=path)

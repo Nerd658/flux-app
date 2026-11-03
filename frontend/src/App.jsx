@@ -324,7 +324,11 @@ function Topbar({ onEditProfile }) {
   async function logout() {
     try {
       await api.logout();
+    } catch {
+      // Ignorer l'erreur pour garantir la purge de session locale
     } finally {
+      document.cookie = "csrf_token=; Max-Age=0; path=/";
+      document.cookie = "csrf_token=; Max-Age=0; path=/api";
       setUser(null);
       navigate("/connexion");
     }

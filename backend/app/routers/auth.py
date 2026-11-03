@@ -16,13 +16,17 @@ def login(data: LoginIn, request: Request, response: Response, db: Session = Dep
     return AuthService.login(db, data.cuid, data.password, request, response, ad_auth_fn=ad_authenticate)
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(csrf_protect)])
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
 ):
+    user = None
+    try:
+        user = get_current_user(request, db)
+    except HTTPException:
+        pass
     AuthService.logout(db, user, request, response)
 
 
