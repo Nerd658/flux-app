@@ -29,7 +29,13 @@ class Oline:
         self.version = version
         self.timeout = timeout
         if verify_ssl is None:
-            verify_ssl = os.getenv("OLINE_VERIFY_SSL", "true").lower() != "false"
+            raw_verify = os.getenv("OLINE_VERIFY_SSL", "true").strip().lower()
+            if raw_verify in ("false", "0", "no", "off"):
+                verify_ssl = False
+            elif os.path.exists(raw_verify):
+                verify_ssl = raw_verify
+            else:
+                verify_ssl = True
         self.verify_ssl = verify_ssl
 
     # --------------------------------------------------------------------- #
@@ -269,13 +275,10 @@ class Oline:
             "key": oql_query,
             "output_fields": output_fields,
         }
-        try:
-            result = self._post(body)
-            objects = result.get("objects")
-            if isinstance(objects, dict):
-                return [obj["fields"] for obj in objects.values() if "fields" in obj]
-        except Exception:
-            pass
+        result = self._post(body)
+        objects = result.get("objects")
+        if isinstance(objects, dict):
+            return [obj["fields"] for obj in objects.values() if "fields" in obj]
         return []
 
     # --- MÉTHODES DE RÉCUPÉRATION DE LISTES ---
