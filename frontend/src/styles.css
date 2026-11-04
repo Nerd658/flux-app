@@ -1562,7 +1562,7 @@ tr.inactive .avatar { background: var(--surface-3); color: var(--subtle); }
 
 .ref-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 16px 24px; border-bottom: 1px solid var(--line); background: #fcfcfd; }
 .ref-head > p { flex: 1 1 280px; color: var(--muted); font-size: 14px; }
-.ref-add { display: flex; flex: 0 1 460px; gap: 8px; }
+.ref-add { display: flex; flex: 1 1 540px; max-width: 680px; gap: 8px; }
 .ref-add .text-input { min-height: 40px; }
 .ref-list { margin: 0; padding: 0; list-style: none; }
 .ref-item { display: flex; align-items: center; gap: 16px; min-height: 60px; padding: 10px 16px 10px 24px; border-bottom: 1px solid var(--line); }

@@ -1,29 +1,19 @@
-[2026-11-03] - Resolution de l erreur 403 sur le logout et purge complete des cookies
+[2026-11-04] - Amelioration de l ergonomie du formulaire d ajout de direction dans l administration
 
 What changed:
-- backend/app/routers/auth.py :
-  * Suppression de la dependance bloquante csrf_protect sur la route POST /api/auth/logout.
-  * La deconnexion s effectue de maniere inconditionnelle meme si le jeton utilisateur est expire.
-- backend/app/services/auth_service.py :
-  * Permet la purge des cookies de session meme si l utilisateur n est plus charge en memoire.
-- backend/app/security.py :
-  * Purge exhaustive des cookies access_token et csrf_token sur les chemins / et /api avec toutes les combinaisons d attributs (HttpOnly, Secure, SameSite).
-- frontend/src/App.jsx :
-  * Nettoyage direct des cookies CSRF cote client et securisation du flux de deconnexion.
+- frontend/src/pages/admin/Referentials.jsx :
+  * Clarification des placeholders : 'Nom de la direction (ex. DRSI)' et infobulle sur le bouton Ajouter.
+- frontend/src/styles.css :
+  * Augmentation de l espace alloue au formulaire d ajout (.ref-add) pour un meilleur confort visuel lors de la saisie des directions et des CUIDs managers.
 
 Why:
-- L en-tête CSRF etait controle strictement sur la route de logout. Si le jeton CSRF etait absent, desynchronise ou expire, le serveur renvoyait 403 Forbidden.
-- Par consequent, le backend n executait jamais la suppression des cookies de session (Set-Cookie: Max-Age=0), laissant la session active et provoquant la re-connexion automatique au rechargement de la page.
+- Le bouton Ajouter etait grise par defaut tant qu au moins 2 caracteres n etaient pas saisis dans le nom de la direction.
+- L affichage cote a cote des deux champs et du bouton etait un peu etroit dans le conteneur de 460px.
 
 Files affected:
-- backend/app/routers/auth.py - Suppression du blocage CSRF sur la deconnexion
-- backend/app/services/auth_service.py - Nettoyage inconditionnel lors du logout
-- backend/app/security.py - Purge multi-path (/ et /api) des cookies de session
-- frontend/src/App.jsx - Nettoyage client et navigation apres deconnexion
+- frontend/src/pages/admin/Referentials.jsx - Placeholder specifique et infobulle
+- frontend/src/styles.css - Elargissement de la zone de saisie
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
 - None.
-
-Notes for review:
-- Mettre a jour sur le serveur distant avec git pull et rebuild des conteneurs backend et frontend.

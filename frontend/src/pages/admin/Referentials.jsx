@@ -101,14 +101,16 @@ export default function AdminReferentials() {
         <div className="ref-head">
           <p>{kind.hint}</p>
           <form className="ref-add" onSubmit={add}>
-            <input className="text-input" maxLength={40} placeholder="Saisir une nouvelle valeur" value={label}
+            <input className="text-input" maxLength={40}
+                   placeholder={tab === "directions" ? "Nom de la direction (ex. DRSI)" : "Saisir une nouvelle valeur"}
+                   value={label}
                    onChange={(e) => setLabel(e.target.value)} aria-label={`Nouvelle valeur : ${kind.label}`} />
             {tab === "directions" && (
               <input className="text-input upper-value" maxLength={255} placeholder="CUIDs Managers (ex. MGR0001, MGR0002)"
                      value={mgrCuid} onChange={(e) => setMgrCuid(e.target.value.replace(/[^A-Za-z0-9,;\s]/g, ""))}
                      aria-label="CUIDs des managers de département" style={{ maxWidth: "280px" }} />
             )}
-            <button className="btn btn-primary" disabled={busy || label.trim().length < 2}>
+            <button className="btn btn-primary" disabled={busy || label.trim().length < 2} title={label.trim().length < 2 ? "Saisir au moins 2 caractères" : "Ajouter"}>
               <IconPlus width={18} height={18} />Ajouter
             </button>
           </form>
