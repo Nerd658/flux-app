@@ -1,38 +1,25 @@
-[2026-11-04] - Optimisation ergonomique et affichage du champ d'ajout de departement
+[2026-11-04] - Elargissement et affichage pleine largeur de Direction et Departement
 
 What changed:
-- Backend:
-  * backend/app/services/referential_service.py :
-    - Amelioration de exists_label et add_label pour verifier l'unicite des departements a l'echelle de leur direction parente (direction_id), conformement a la contrainte uq_departement_direction_libelle.
-
 - Frontend:
-  * frontend/src/components/ui.jsx :
-    - Refonte du composant SelectWithAdd : prise en charge native de la propriete disabled, affichage d'un texte d'aide lorsque la liste est vide (emptyHint), et ajout d'un bouton d'action explicite (.field-action-link) sous le menu deroulant.
-    - Remplacement de l'agencement horizontal .add-inline par un bloc vertical .add-box : champ de saisie a 100% de largeur avec auto-focus, et boutons Annuler / Ajouter compacts (.btn-sm) positionnes proprement en dessous.
-  * frontend/src/styles.css :
-    - Styles dedies .select-with-add-wrap, .add-box, .add-box-input-wrap, .add-box-actions et .field-action-link avec animations douces et contrastes Orange conformes a la charte.
-  * frontend/src/pages/NewRequest.jsx :
-    - Espacement vertical propre (.grid-2 avec marge superieure de 20px) entre les informations personnelles et la selection Direction / Departement.
-    - Desactivation explicite du select Departement tant qu'aucune Direction n'est choisie, et libelle d'action direct '+ Ajouter un departement non liste'.
   * frontend/src/App.jsx :
-    - Alignement de la modale de profil (ProfileModal) avec support complet de disabled, placeholder contextualise et action d'ajout direct.
+    - Passage de la modale de profil ProfileModal en taille large (size='lg', max-width: 740px).
+    - Separation des champs Direction de rattachement et Departement de rattachement sur leur propre ligne pleine largeur (suppression du conteneur reduit grid-2 a deux colonnes).
+  * frontend/src/pages/NewRequest.jsx :
+    - Utilisation d'un agencement vertical form-stack pour Direction et Departement, assurant une largeur de lecture complete de 100% sans contrainte d'espace.
+  * frontend/src/styles.css :
+    - Attribution de width: 100%, text-overflow: ellipsis et white-space: nowrap sur .select-input.
+    - Elargissement de .modal.lg a 740px.
 
 Why:
-- Dans les formulaires a deux colonnes ou les modales, l'ancien format horizontal .add-inline ecrasait l'input a moins de 50px de large entre les deux boutons, rendant le champ illisible et inutilisable.
-- L'utilisateur n'avait pas de visibilite immediate sur la possibilite d'ajouter un departement lorsque la liste deroulante native etait fermee.
-- L'unicite des departements dans referential_service n'etait pas correctement cloisonnee par direction parente.
+- Le champ 'Departement de rattachement' etait enferme dans une colonne de 220px au sein d'une modale etroite, coupant les libelles longs apres quelques lettres.
+- Le passage en pleine largeur permet d'afficher l'integralite du nom des departements avec tout leur confort de lecture.
 
 Files affected:
-- backend/app/services/referential_service.py - Verification d'unicite par direction_id
-- frontend/src/components/ui.jsx - Composant SelectWithAdd robuste avec add-box pleine largeur
-- frontend/src/styles.css - Styles de presentation du select et du formulaire d'ajout
-- frontend/src/pages/NewRequest.jsx - Espacement et parametrage du selecteur de departement
-- frontend/src/App.jsx - Parametrage du selecteur de departement dans ProfileModal
+- frontend/src/App.jsx - Modale large et champs Direction/Departement pleine largeur
+- frontend/src/pages/NewRequest.jsx - Form-stack pleine largeur pour la selection d'organisation
+- frontend/src/styles.css - Styles select-input et modal.lg
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:
 - None.
-
-Notes for review:
-- Tester la saisie d'un nouveau departement dans la modale de profil et dans le formulaire de nouvelle demande : l'input occupe desormais toute la largeur du champ et les boutons sont alignes en dessous.
-- La touche Entree valide l'ajout, la touche Echap annule et revient a la liste deroulante.

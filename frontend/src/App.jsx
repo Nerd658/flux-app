@@ -253,6 +253,7 @@ function ProfileModal({ user, force, onClose, onSaved }) {
 
   return (
     <Modal
+      size="lg"
       title={force ? "Finalisez votre profil" : "Modifier mon profil"}
       description={`CUID ${user.cuid} · Renseignez vos informations pour vos demandes d'ouverture de flux.`}
       onClose={force ? undefined : onClose}
@@ -279,43 +280,41 @@ function ProfileModal({ user, force, onClose, onSaved }) {
         <Field label="Email professionnel" hint="Utilisé pour le suivi de vos demandes et vos tickets Oline">
           <input className="text-input" type="email" required placeholder="prenom.nom@orange.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
-        <div className="grid-2">
-          <Field group label="Direction de rattachement" hint="Votre direction dans l'organigramme">
-            <SelectWithAdd
-              value={direction}
-              options={directions.map((d) => d.libelle)}
-              placeholder="Sélectionner votre direction…"
-              addLabel="+ Ajouter une direction…"
-              actionLabel="+ Ajouter une direction non listée"
-              inputPlaceholder="Nom de la direction"
-              onChange={(v) => {
-                setDirection(v);
-                const nextDirObj = directions.find((d) => d.libelle === v);
-                const nextDepts = departements.filter(
-                  (d) => (nextDirObj && d.direction_id === nextDirObj.id) || d.direction_libelle === v
-                );
-                if (!nextDepts.some((d) => d.libelle === departement)) {
-                  setDepartement("");
-                }
-              }}
-              onAdd={addDirection}
-            />
-          </Field>
-          <Field group label="Département de rattachement" hint={direction ? "Votre département au sein de la direction" : "Sélectionnez d'abord votre direction"}>
-            <SelectWithAdd
-              value={departement}
-              options={availableDepartements.map((d) => d.libelle)}
-              disabled={!direction}
-              placeholder={direction ? "Sélectionner votre département…" : "Direction requise"}
-              emptyHint="Aucun département pour cette direction"
-              addLabel={direction ? "+ Ajouter un département…" : undefined}
-              actionLabel={direction ? "+ Ajouter un département non listé" : undefined}
-              inputPlaceholder="Nom du département"
-              onChange={(v) => setDepartement(v)}
-              onAdd={addDepartement}
-            />
-          </Field>
-        </div>
+        <Field group label="Direction de rattachement" hint="Votre direction dans l'organigramme">
+          <SelectWithAdd
+            value={direction}
+            options={directions.map((d) => d.libelle)}
+            placeholder="Sélectionner votre direction…"
+            addLabel="+ Ajouter une direction…"
+            actionLabel="+ Ajouter une direction non listée"
+            inputPlaceholder="Nom de la direction"
+            onChange={(v) => {
+              setDirection(v);
+              const nextDirObj = directions.find((d) => d.libelle === v);
+              const nextDepts = departements.filter(
+                (d) => (nextDirObj && d.direction_id === nextDirObj.id) || d.direction_libelle === v
+              );
+              if (!nextDepts.some((d) => d.libelle === departement)) {
+                setDepartement("");
+              }
+            }}
+            onAdd={addDirection}
+          />
+        </Field>
+        <Field group label="Département de rattachement" hint={direction ? "Votre département au sein de la direction" : "Sélectionnez d'abord votre direction"}>
+          <SelectWithAdd
+            value={departement}
+            options={availableDepartements.map((d) => d.libelle)}
+            disabled={!direction}
+            placeholder={direction ? "Sélectionner votre département…" : "Direction requise"}
+            emptyHint="Aucun département pour cette direction"
+            addLabel={direction ? "+ Ajouter un département…" : undefined}
+            actionLabel={direction ? "+ Ajouter un département non listé" : undefined}
+            inputPlaceholder="Nom du département"
+            onChange={(v) => setDepartement(v)}
+            onAdd={addDepartement}
+          />
+        </Field>
         <div className="grid-2">
           <Field label="Statut professionnel" hint="Votre statut contractuel">
             <select

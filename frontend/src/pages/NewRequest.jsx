@@ -434,7 +434,7 @@ export default function NewRequest() {
               <div><span>Email</span><strong>{user.email}</strong></div>
               <div><span>Téléphone</span><strong className="num">{user.telephone}</strong></div>
             </div>
-            <div className="grid-2" style={{ marginTop: "20px" }}>
+            <div className="form-stack" style={{ marginTop: "20px" }}>
               <Field group label="Direction" error={ee.direction}
                      hint={ee.direction ? undefined : "Votre direction de rattachement"}>
                 <SelectWithAdd value={form.direction} options={ref.directions.map((d) => d.libelle)} invalid={!!ee.direction}
