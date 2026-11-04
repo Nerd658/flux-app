@@ -315,38 +315,128 @@ export function Loading({ label = "Chargement…" }) {
 
 const ADD = "__add__";
 
-export function SelectWithAdd({ value, options, onChange, onAdd, placeholder, addLabel, inputPlaceholder, invalid }) {
+export function SelectWithAdd({
+  value,
+  options = [],
+  onChange,
+  onAdd,
+  placeholder = "Sélectionner…",
+  addLabel = "+ Ajouter…",
+  actionLabel,
+  inputPlaceholder = "Nouvelle valeur",
+  invalid = false,
+  disabled = false,
+  emptyHint = "Aucun élément disponible",
+}) {
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit() {
+    const val = text.trim();
+    if (val.length < 2) return;
     setBusy(true);
     try {
-      const ok = await onAdd(text.trim()); // le parent gère l'appel API et ses erreurs
-      if (ok) { setAdding(false); setText(""); }
+      const ok = await onAdd(val); // le parent gère l'appel API et ses erreurs
+      if (ok) {
+        setAdding(false);
+        setText("");
+      }
     } finally {
       setBusy(false);
     }
   }
 
-  if (adding) {
+  if (adding && !disabled) {
     return (
-      <div className="add-inline">
-        <input className="text-input" autoFocus maxLength={40} placeholder={inputPlaceholder} value={text}
-               onChange={(e) => setText(e.target.value)}
-               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (text.trim().length >= 2) submit(); } if (e.key === "Escape") setAdding(false); }} />
-        <button type="button" className="btn btn-primary" disabled={busy || text.trim().length < 2} onClick={submit}>Ajouter</button>
-        <button type="button" className="btn btn-secondary" onClick={() => { setAdding(false); setText(""); }}>Annuler</button>
+      <div className="add-box">
+        <div className="add-box-input-wrap">
+          <input
+            className="text-input"
+            autoFocus
+            maxLength={60}
+            placeholder={inputPlaceholder}
+            value={text}
+            disabled={busy}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (text.trim().length >= 2 && !busy) submit();
+              }
+              if (e.key === "Escape" && !busy) {
+                setAdding(false);
+                setText("");
+              }
+            }}
+          />
+        </div>
+        <div className="add-box-actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={busy}
+            onClick={() => {
+              setAdding(false);
+              setText("");
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={busy || text.trim().length < 2}
+            onClick={submit}
+          >
+            {busy ? "Ajout…" : "Ajouter"}
+          </button>
+        </div>
       </div>
     );
   }
+
+  const canAdd = Boolean(onAdd && !disabled);
+  const hasOptions = options && options.length > 0;
+  const currentPlaceholder = disabled
+    ? placeholder
+    : hasOptions
+    ? placeholder
+    : emptyHint || placeholder;
+
   return (
-    <select className={`text-input select-input ${invalid ? "invalid" : ""} ${value ? "" : "is-empty"}`} value={value}
-            onChange={(e) => (e.target.value === ADD ? setAdding(true) : onChange(e.target.value))}>
-      <option value="" disabled>{placeholder}</option>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      <option value={ADD}>{addLabel}</option>
-    </select>
+    <div className="select-with-add-wrap">
+      <select
+        className={`text-input select-input ${invalid ? "invalid" : ""} ${value ? "" : "is-empty"}`}
+        value={value || ""}
+        disabled={disabled}
+        onChange={(e) => {
+          if (e.target.value === ADD) {
+            setAdding(true);
+          } else {
+            onChange(e.target.value);
+          }
+        }}
+      >
+        <option value="" disabled>
+          {currentPlaceholder}
+        </option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+        {canAdd && addLabel && <option value={ADD}>{addLabel}</option>}
+      </select>
+      {canAdd && (
+        <button
+          type="button"
+          className="field-action-link"
+          onClick={() => setAdding(true)}
+        >
+          {actionLabel || (hasOptions ? addLabel : "+ Ajouter cette valeur")}
+        </button>
+      )}
+    </div>
   );
 }

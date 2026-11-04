@@ -434,11 +434,12 @@ export default function NewRequest() {
               <div><span>Email</span><strong>{user.email}</strong></div>
               <div><span>Téléphone</span><strong className="num">{user.telephone}</strong></div>
             </div>
-            <div className="grid-2">
+            <div className="grid-2" style={{ marginTop: "20px" }}>
               <Field group label="Direction" error={ee.direction}
                      hint={ee.direction ? undefined : "Votre direction de rattachement"}>
                 <SelectWithAdd value={form.direction} options={ref.directions.map((d) => d.libelle)} invalid={!!ee.direction}
                                placeholder="Sélectionner la direction" addLabel="+ Ajouter une direction…"
+                               actionLabel="+ Ajouter une direction non listée"
                                inputPlaceholder="Saisir le nom de la direction"
                                onChange={(v) => {
                                  set({
@@ -452,8 +453,11 @@ export default function NewRequest() {
               <Field group label="Département" error={ee.departement}
                      hint={ee.departement ? undefined : (!form.direction ? "Sélectionnez d'abord votre direction" : "Votre département au sein de la direction")}>
                 <SelectWithAdd value={form.departement} options={availableDepartements.map((d) => d.libelle)} invalid={!!ee.departement}
+                               disabled={!form.direction}
                                placeholder={form.direction ? "Sélectionner le département" : "Direction requise"}
+                               emptyHint="Aucun département pour cette direction"
                                addLabel={form.direction ? "+ Ajouter un département…" : undefined}
+                               actionLabel={form.direction ? "+ Ajouter un département non listé" : undefined}
                                inputPlaceholder="Saisir le nom du département"
                                onChange={(v) => {
                                  const depObj = availableDepartements.find((d) => d.libelle === v);

@@ -286,6 +286,7 @@ function ProfileModal({ user, force, onClose, onSaved }) {
               options={directions.map((d) => d.libelle)}
               placeholder="Sélectionner votre direction…"
               addLabel="+ Ajouter une direction…"
+              actionLabel="+ Ajouter une direction non listée"
               inputPlaceholder="Nom de la direction"
               onChange={(v) => {
                 setDirection(v);
@@ -304,8 +305,11 @@ function ProfileModal({ user, force, onClose, onSaved }) {
             <SelectWithAdd
               value={departement}
               options={availableDepartements.map((d) => d.libelle)}
+              disabled={!direction}
               placeholder={direction ? "Sélectionner votre département…" : "Direction requise"}
+              emptyHint="Aucun département pour cette direction"
               addLabel={direction ? "+ Ajouter un département…" : undefined}
+              actionLabel={direction ? "+ Ajouter un département non listé" : undefined}
               inputPlaceholder="Nom du département"
               onChange={(v) => setDepartement(v)}
               onAdd={addDepartement}

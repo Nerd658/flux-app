@@ -82,8 +82,16 @@ class ReferentialService:
         return definition
 
     @staticmethod
-    def exists_label(db: Session, model: Any, libelle: str, exclude_id: int | None = None) -> bool:
+    def exists_label(
+        db: Session,
+        model: Any,
+        libelle: str,
+        exclude_id: int | None = None,
+        direction_id: int | None = None,
+    ) -> bool:
         stmt = select(model.id).where(func.lower(model.libelle) == libelle.lower())
+        if direction_id is not None and hasattr(model, "direction_id"):
+            stmt = stmt.where(model.direction_id == direction_id)
         if exclude_id is not None:
             stmt = stmt.where(model.id != exclude_id)
         return db.scalar(stmt) is not None
@@ -233,7 +241,8 @@ class ReferentialService:
 
     @classmethod
     def add_label(cls, db: Session, model: Any, libelle: str, user: User, request: Request, action: str, **extra):
-        if cls.exists_label(db, model, libelle):
+        direction_id = extra.get("direction_id")
+        if cls.exists_label(db, model, libelle, direction_id=direction_id):
             raise HTTPException(status.HTTP_409_CONFLICT, "Cette valeur existe deja")
         if db.scalar(select(func.count()).select_from(model)) >= MAX_ITEMS_PER_LIST:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nombre maximal de valeurs atteint")

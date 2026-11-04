@@ -451,8 +451,47 @@ textarea.text-input { min-height: 104px; resize: vertical; }
 .search > svg { position: absolute; left: 13px; color: var(--subtle); pointer-events: none; }
 .search .text-input { min-height: 40px; padding-left: 40px; font-size: 14px; }
 
+.select-with-add-wrap { display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; }
 .add-inline { display: flex; gap: 8px; }
 .add-inline .text-input { flex: 1; min-width: 0; }
+
+.add-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--orange);
+  border-radius: var(--r-md);
+  background: var(--orange-25);
+  animation: fade-in .15s ease-out;
+}
+.add-box-input-wrap { width: 100%; }
+.add-box-input-wrap .text-input { background: #fff; min-height: 40px; font-size: 14px; }
+.add-box-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+.field-action-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 2px 4px;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--orange-700);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: color .15s, background-color .15s;
+}
+.field-action-link:hover {
+  background: var(--orange-50);
+  color: var(--orange-hover);
+  text-decoration: underline;
+}
 
 .segmented {
   display: inline-flex;
