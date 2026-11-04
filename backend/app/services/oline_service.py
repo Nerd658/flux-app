@@ -40,10 +40,15 @@ class OlineService:
             else ""
         )
 
+        direction_val = getattr(req, "direction", None)
+        if isinstance(direction_val, str) and direction_val.strip():
+            dir_info = f"Direction : {direction_val} | Département : {req.departement}\n"
+        else:
+            dir_info = f"Direction : {req.departement}\n"
         return (
             f"{warning}"
             f"Demandeur : {req.dem_prenom} {req.dem_nom.upper()} ({statut_label})\n"
-            f"Direction : {req.departement}\n"
+            f"{dir_info}"
             f"Justification :\n"
             f"{justif_text}\n\n"
             f"Référence : {req.reference}\n"

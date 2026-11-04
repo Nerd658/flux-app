@@ -93,6 +93,8 @@ class AuthService:
         user.email = email
         if data.telephone is not None:
             user.telephone = data.telephone.strip()
+        if data.direction:
+            user.direction = data.direction.strip()
         if data.departement:
             user.departement = data.departement.strip()
         if data.statut_pro:
@@ -112,6 +114,8 @@ class AuthService:
                     "nom": user.nom,
                     "prenom": user.prenom,
                     "email": user.email,
+                    "direction": user.direction,
+                    "departement": user.departement,
                     "statut_pro": user.statut_pro.value if user.statut_pro else None,
                 },
             },

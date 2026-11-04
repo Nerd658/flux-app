@@ -26,6 +26,7 @@ class ProfileUpdateIn(StrictModel):
     prenom: str = Field(min_length=1, max_length=100)
     email: EmailStr
     telephone: str = Field(default="", max_length=30)
+    direction: str = Field(default="", max_length=150)
     departement: str = Field(default="", max_length=150)
     statut_pro: StatutProfessionnel = Field(default=StatutProfessionnel.employe)
 
@@ -40,6 +41,7 @@ class UserOut(BaseModel):
     nom: str
     prenom: str
     telephone: str
+    direction: str | None = None
     departement: str
     role: Role
     statut_pro: StatutProfessionnel | None = None
@@ -52,6 +54,7 @@ class UserOut(BaseModel):
             or self.nom == self.cuid
             or self.email.endswith("@annuaire.invalid")
             or self.statut_pro is None
+            or (not self.direction and self.departement in ("-", "", "Non renseignee", "Non renseignée", None))
         )
 
 
@@ -72,17 +75,29 @@ class ManagerInfoOut(BaseModel):
     role: str = "manager"
 
 
+class DepartementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    direction_id: int
+    direction_libelle: str = ""
+    libelle: str
+    manager_cuid: str | None = None
+    managers: list[ManagerInfoOut] = []
+
+
 class DirectionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     libelle: str
     manager_cuid: str | None = None
     managers: list[ManagerInfoOut] = []
+    departements: list[DepartementOut] = []
 
 
 class ReferentielsOut(BaseModel):
     flux_types: list[LabelOut]
     directions: list[DirectionOut]
+    departements: list[DepartementOut] = []
     zones: list[LabelOut]
     pays: list[LabelOut]
 
@@ -93,7 +108,14 @@ class FluxTypeIn(StrictModel):
 
 
 class DirectionIn(StrictModel):
-    libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()]+$")
+    libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()&]+$")
+    manager_cuid: str | None = Field(default=None, max_length=255, pattern=r"^[A-Za-z0-9,;\s]*$")
+
+
+class DepartementIn(StrictModel):
+    direction_id: int | None = None
+    direction_libelle: str | None = None
+    libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()&]+$")
     manager_cuid: str | None = Field(default=None, max_length=255, pattern=r"^[A-Za-z0-9,;\s]*$")
 
 
@@ -190,6 +212,7 @@ class FluxLineIn(StrictModel):
 class FluxRequestIn(StrictModel):
     flux_type_id: int = Field(gt=0)
     manager: Personne
+    direction: str = Field(default="", max_length=150, pattern=_FREE_TEXT)
     departement: str = Field(min_length=1, max_length=150, pattern=_FREE_TEXT)
     manager_cuid: str | None = Field(default=None, max_length=32, pattern=r"^[A-Za-z0-9]*$")
     periode: Periode
@@ -265,6 +288,8 @@ class RequestSummary(BaseModel):
     ticket_ref: str | None = None
     flux_type: str
     demandeur: str
+    direction: str = ""
+    departement: str = ""
     statut: Statut
     created_at: datetime
     nb_lignes: int
@@ -282,6 +307,7 @@ class RequestDetail(BaseModel):
     demandeur: PersonneOut
     manager: PersonneOut
     manager_cuid: str | None = None
+    direction: str = ""
     departement: str
     periode: Periode
     date_debut: date
@@ -321,6 +347,7 @@ class PublicVerifyOut(BaseModel):
     statut: Statut
     demandeur_nom: str
     demandeur_statut_pro: StatutProfessionnel | None = None
+    direction: str = ""
     departement: str
     periode: Periode
     date_debut: date
@@ -342,6 +369,7 @@ class UserAdminOut(BaseModel):
     prenom: str
     email: str
     telephone: str
+    direction: str | None = None
     departement: str
     statut_pro: StatutProfessionnel | None = None
     role: Role
@@ -384,9 +412,11 @@ class UserStatusIn(StrictModel):
 
 
 class LabelIn(StrictModel):
-    """Libellé d'un référentiel (avec champ optionnel manager_cuid pour les directions)."""
-    libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()]+$")
+    """Libellé d'un référentiel (avec champs optionnels pour directions et départements)."""
+    libelle: str = Field(min_length=2, max_length=150, pattern=r"^[\w .\-/()&]+$")
     manager_cuid: str | None = Field(default=None, max_length=255, pattern=r"^[A-Za-z0-9,;\s]*$")
+    direction_id: int | None = None
+    direction_libelle: str | None = None
 
 
 class LabelUsageOut(BaseModel):
@@ -395,6 +425,8 @@ class LabelUsageOut(BaseModel):
     usage: int
     manager_cuid: str | None = None
     managers: list[ManagerInfoOut] = []
+    direction_id: int | None = None
+    direction_libelle: str | None = None
 
 
 class CountOut(BaseModel):

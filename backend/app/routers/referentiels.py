@@ -4,7 +4,15 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import csrf_protect, get_current_user
 from app.models import Direction, FluxType, User
-from app.schemas import DirectionIn, DirectionOut, FluxTypeIn, LabelOut, ReferentielsOut
+from app.schemas import (
+    DepartementIn,
+    DepartementOut,
+    DirectionIn,
+    DirectionOut,
+    FluxTypeIn,
+    LabelOut,
+    ReferentielsOut,
+)
 from app.services.referential_service import ReferentialService
 
 router = APIRouter(prefix="/api/referentiels", tags=["referentiels"])
@@ -55,4 +63,37 @@ def add_direction(
         libelle=item.libelle,
         manager_cuid=item.manager_cuid,
         managers=mgr_map.get(item.id, []),
+    )
+
+
+@router.post(
+    "/departements",
+    response_model=DepartementOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(csrf_protect)],
+)
+def add_departement(
+    data: DepartementIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Ajout d'un departement lie a une direction, partage ensuite avec tous les utilisateurs."""
+    out = ReferentialService.create_referential(
+        db,
+        "departements",
+        data.libelle,
+        user,
+        request,
+        manager_cuid=data.manager_cuid,
+        direction_id=data.direction_id,
+        direction_libelle=data.direction_libelle,
+    )
+    return DepartementOut(
+        id=out.id,
+        direction_id=out.direction_id or 0,
+        direction_libelle=out.direction_libelle or "",
+        libelle=out.libelle,
+        manager_cuid=out.manager_cuid,
+        managers=out.managers,
     )

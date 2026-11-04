@@ -10,6 +10,7 @@ from app.audit import audit
 from app.common.dates import to_naive_utc
 from app.models import (
     Decision,
+    Departement,
     Direction,
     FluxLine,
     FluxRequest,
@@ -100,6 +101,7 @@ class RequestService:
                 telephone=req.mgr_telephone,
             ),
             manager_cuid=req.manager_cuid,
+            direction=getattr(req, "direction", "") or "",
             departement=req.departement,
             periode=req.periode,
             date_debut=req.date_debut,
@@ -127,6 +129,8 @@ class RequestService:
                 ticket_ref=r.ticket_ref,
                 flux_type=r.flux_type_label,
                 demandeur=f"{r.dem_prenom} {r.dem_nom.upper()}",
+                direction=getattr(r, "direction", "") or "",
+                departement=r.departement,
                 statut=r.statut,
                 created_at=r.created_at,
                 nb_lignes=len(r.lines),
@@ -137,10 +141,32 @@ class RequestService:
 
     @classmethod
     def _resolve_and_validate_manager(
-        cls, db: Session, direction_label: str, raw_cuid: str | None, current_user: User
+        cls,
+        db: Session,
+        direction_label: str | None,
+        raw_cuid: str | None,
+        current_user: User,
+        dept_label: str | None = None,
     ) -> tuple[str | None, User | None]:
-        direction = db.scalar(select(Direction).where(Direction.libelle == direction_label))
-        authorized = direction.authorized_managers if direction else []
+        authorized: list[str] = []
+        target_name = ""
+        is_dept = False
+
+        if dept_label:
+            dept = db.scalar(select(Departement).where(Departement.libelle == dept_label))
+            if dept and dept.authorized_managers:
+                authorized = dept.authorized_managers
+                target_name = dept.libelle
+                is_dept = True
+
+        if not authorized:
+            dir_to_check = direction_label or dept_label
+            if dir_to_check:
+                direction = db.scalar(select(Direction).where(Direction.libelle == dir_to_check))
+                if direction and direction.authorized_managers:
+                    authorized = direction.authorized_managers
+                    target_name = direction.libelle
+                    is_dept = False
 
         selected_cuid = raw_cuid.strip().upper() if raw_cuid and raw_cuid.strip() else None
 
@@ -149,14 +175,16 @@ class RequestService:
                 if len(authorized) == 1:
                     selected_cuid = authorized[0]
                 else:
+                    entity_type = "le département" if is_dept else "la direction"
                     raise HTTPException(
                         status.HTTP_400_BAD_REQUEST,
-                        f"Veuillez sélectionner votre responsable parmi ceux autorisés pour la direction {direction_label}",
+                        f"Veuillez sélectionner votre responsable parmi ceux autorisés pour {entity_type} {target_name}",
                     )
             elif selected_cuid not in authorized:
+                entity_type = "le département" if is_dept else "la direction"
                 raise HTTPException(
                     status.HTTP_400_BAD_REQUEST,
-                    f"Le responsable {selected_cuid} n'est pas habilité pour la direction {direction_label}",
+                    f"Le responsable {selected_cuid} n'est pas habilité pour {entity_type} {target_name}",
                 )
 
         mgr_user = None
@@ -178,7 +206,9 @@ class RequestService:
     @classmethod
     def preview(cls, db: Session, data: FluxRequestIn, user: User) -> RequestDetail:
         flux_label = ReferentialService.validate_request_labels(db, data)
-        mgr_cuid, mgr_user = cls._resolve_and_validate_manager(db, data.departement, data.manager_cuid, user)
+        mgr_cuid, mgr_user = cls._resolve_and_validate_manager(
+            db, data.direction, data.manager_cuid, user, dept_label=data.departement
+        )
         mgr_info = (
             PersonneOut(
                 nom=mgr_user.nom,
@@ -200,6 +230,7 @@ class RequestService:
             ),
             manager=mgr_info,
             manager_cuid=mgr_cuid,
+            direction=data.direction or (user.direction or ""),
             departement=data.departement,
             periode=data.periode,
             date_debut=data.date_debut,
@@ -210,7 +241,9 @@ class RequestService:
     @classmethod
     def submit(cls, db: Session, data: FluxRequestIn, user: User, request: Request) -> RequestDetail:
         flux_label = ReferentialService.validate_request_labels(db, data)
-        mgr_cuid, mgr_user = cls._resolve_and_validate_manager(db, data.departement, data.manager_cuid, user)
+        mgr_cuid, mgr_user = cls._resolve_and_validate_manager(
+            db, data.direction, data.manager_cuid, user, dept_label=data.departement
+        )
         mgr_nom = mgr_user.nom if mgr_user and mgr_user.nom and mgr_user.nom != mgr_user.cuid else data.manager.nom
         mgr_prenom = mgr_user.prenom if mgr_user and mgr_user.prenom and mgr_user.prenom != "-" else data.manager.prenom
         mgr_email = mgr_user.email if mgr_user and mgr_user.email and not mgr_user.email.endswith("@pending.orange.bf") else str(data.manager.email)
@@ -227,6 +260,7 @@ class RequestService:
             dem_email=user.email,
             dem_telephone=user.telephone,
             dem_statut_pro=dem_statut,
+            direction=data.direction or (user.direction or ""),
             departement=data.departement,
             manager_cuid=mgr_cuid,
             mgr_nom=mgr_nom,

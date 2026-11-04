@@ -89,7 +89,16 @@ def create_referential(
     db: Session = Depends(get_db),
     admin: User = Depends(admin_only),
 ):
-    return ReferentialService.create_referential(db, kind, data.libelle, admin, request, manager_cuid=data.manager_cuid)
+    return ReferentialService.create_referential(
+        db,
+        kind,
+        data.libelle,
+        admin,
+        request,
+        manager_cuid=data.manager_cuid,
+        direction_id=data.direction_id,
+        direction_libelle=data.direction_libelle,
+    )
 
 
 @router.put("/referentiels/{kind}/{item_id}", response_model=LabelUsageOut, dependencies=csrf)
@@ -101,7 +110,16 @@ def rename_referential(
     db: Session = Depends(get_db),
     admin: User = Depends(admin_only),
 ):
-    return ReferentialService.rename_referential(db, kind, item_id, data.libelle, admin, request, manager_cuid=data.manager_cuid)
+    return ReferentialService.rename_referential(
+        db,
+        kind,
+        item_id,
+        data.libelle,
+        admin,
+        request,
+        manager_cuid=data.manager_cuid,
+        direction_id=data.direction_id,
+    )
 
 
 @router.delete("/referentiels/{kind}/{item_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=csrf)

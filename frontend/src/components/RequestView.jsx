@@ -28,8 +28,9 @@ export default function RequestView({ req }) {
         <Person title="Demandeur" p={req.demandeur} statut={req.demandeur?.statut_pro} />
         <Person title={req.manager_cuid ? `Manager (${req.manager_cuid})` : "Manager"} p={req.manager} />
         <div className="person">
-          <span className="person-title">Direction</span>
+          <span className="person-title">{req.direction ? "Département" : "Direction"}</span>
           <strong>{req.departement}</strong>
+          {req.direction && <span>Direction : {req.direction}</span>}
           <span>Type d'ouverture : {req.flux_type}</span>
         </div>
         <div className="person">

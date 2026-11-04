@@ -5,7 +5,8 @@ const FIELD_LABELS = {
   dst_ip: "IP destination", dst_ports: "Port(s)", protocole: "Protocole", dst_zone: "Zone destination",
   dst_pays: "Pays destination", dst_app: "Application destination", type_acces: "Type d'accès",
   justification: "Justification", nom: "Nom", prenom: "Prénom", email: "Email", telephone: "Téléphone",
-  departement: "Direction", date_debut: "Date de début", date_fin: "Date de fin", periode: "Période",
+  direction: "Direction", departement: "Département", direction_id: "Direction parente",
+  date_debut: "Date de début", date_fin: "Date de fin", periode: "Période",
   commentaire: "Commentaire", libelle: "Libellé", password: "Mot de passe applicatif", cuid: "CUID",
   current_password: "Mot de passe actuel", new_password: "Nouveau mot de passe", role: "Rôle",
 };
@@ -80,6 +81,11 @@ export const api = {
   referentiels: () => request("/referentiels"),
   addFluxType: (libelle) => request("/referentiels/flux-types", { method: "POST", body: { libelle } }),
   addDirection: (libelle) => request("/referentiels/directions", { method: "POST", body: { libelle } }),
+  addDepartement: (libelle, direction_id, direction_libelle) =>
+    request("/referentiels/departements", {
+      method: "POST",
+      body: { libelle, direction_id: direction_id || null, direction_libelle: direction_libelle || null },
+    }),
   preview: (data) => request("/requests/preview", { method: "POST", body: data }),
   submit: (data) => request("/requests", { method: "POST", body: data }),
   mine: () => request("/requests/mine"),
@@ -112,15 +118,25 @@ export const api = {
     setRole: (uid, role) => request(`/admin/users/${id(uid)}`, { method: "PUT", body: { role } }),
     setStatus: (uid, is_active) => request(`/admin/users/${id(uid)}/status`, { method: "POST", body: { is_active } }),
     referentiels: () => request("/admin/referentiels"),
-    addRef: (kind, libelle, manager_cuid) =>
+    addRef: (kind, libelle, manager_cuid, direction_id, direction_libelle) =>
       request(`/admin/referentiels/${id(kind)}`, {
         method: "POST",
-        body: { libelle, manager_cuid: manager_cuid || null },
+        body: {
+          libelle,
+          manager_cuid: manager_cuid || null,
+          direction_id: direction_id || null,
+          direction_libelle: direction_libelle || null,
+        },
       }),
-    renameRef: (kind, rid, libelle, manager_cuid) =>
+    renameRef: (kind, rid, libelle, manager_cuid, direction_id, direction_libelle) =>
       request(`/admin/referentiels/${id(kind)}/${id(rid)}`, {
         method: "PUT",
-        body: { libelle, manager_cuid: manager_cuid || null },
+        body: {
+          libelle,
+          manager_cuid: manager_cuid || null,
+          direction_id: direction_id || null,
+          direction_libelle: direction_libelle || null,
+        },
       }),
     deleteRef: (kind, rid) => request(`/admin/referentiels/${id(kind)}/${id(rid)}`, { method: "DELETE" }),
     audit: (params) => request(`/admin/audit?${query(params)}`),

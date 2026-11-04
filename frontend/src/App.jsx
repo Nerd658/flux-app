@@ -12,7 +12,7 @@ import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminUsers from "./pages/admin/Users.jsx";
 import AdminReferentials from "./pages/admin/Referentials.jsx";
 import AdminAudit from "./pages/admin/Audit.jsx";
-import { ErrorBanner, Field, Modal, ToastProvider, useToast } from "./components/ui.jsx";
+import { ErrorBanner, Field, Modal, SelectWithAdd, ToastProvider, useToast } from "./components/ui.jsx";
 import {
   BrandMark, IconChevronDown, IconFileCheck, IconGrid, IconHistory, IconLayers, IconList, IconLogout,
   IconPencil, IconPlus, IconShield, IconUsers,
@@ -120,7 +120,7 @@ function Sidebar() {
             <span className="scope-icon"><IconShield width={16} height={16} /></span>
             <div>
               <strong>{info.label}</strong>
-              <small>Direction {user.departement}</small>
+              <small>{user.direction ? `${user.direction} · ` : ""}{user.departement && user.departement !== "Non renseignee" ? user.departement : "Direction non renseignée"}</small>
             </div>
           </div>
           <p>{info.desc}</p>
@@ -143,15 +143,74 @@ function ProfileModal({ user, force, onClose, onSaved }) {
   const [prenom, setPrenom] = useState(user.prenom && user.prenom !== "-" ? user.prenom : "");
   const [email, setEmail] = useState(user.email && !user.email.endsWith("@annuaire.invalid") ? user.email : "");
   const [telephone, setTelephone] = useState(user.telephone || "");
+  const [direction, setDirection] = useState(user.direction || "");
   const [departement, setDepartement] = useState(user.departement && user.departement !== "Non renseignee" ? user.departement : "");
   const [statutPro, setStatutPro] = useState(user.statut_pro || "");
   const [directions, setDirections] = useState([]);
+  const [departements, setDepartements] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.referentiels().then((r) => setDirections(r.directions || [])).catch(() => {});
-  }, []);
+    api.referentiels().then((r) => {
+      const dirs = r.directions || [];
+      const depts = r.departements || [];
+      setDirections(dirs);
+      setDepartements(depts);
+
+      // Si l'utilisateur n'avait pas encore de direction explicite :
+      if (!user.direction && user.departement && user.departement !== "Non renseignee") {
+        const matchDept = depts.find((d) => d.libelle === user.departement);
+        if (matchDept?.direction_libelle) {
+          setDirection(matchDept.direction_libelle);
+        } else {
+          const matchDir = dirs.find((d) => d.libelle === user.departement);
+          if (matchDir) {
+            setDirection(matchDir.libelle);
+            setDepartement("");
+          }
+        }
+      }
+    }).catch(() => {});
+  }, [user.direction, user.departement]);
+
+  const selectedDir = directions.find((d) => d.libelle === direction);
+  const availableDepartements = departements.filter(
+    (d) => (selectedDir && d.direction_id === selectedDir.id) || d.direction_libelle === direction
+  );
+
+  async function addDirection(libelle) {
+    setError("");
+    try {
+      const d = await api.addDirection(libelle);
+      setDirections((prev) => [...prev, d].sort((a, b) => a.libelle.localeCompare(b.libelle)));
+      setDirection(d.libelle);
+      setDepartement("");
+      toast(`Direction « ${d.libelle} » ajoutée`);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }
+
+  async function addDepartement(libelle) {
+    if (!selectedDir) {
+      setError("Veuillez d'abord sélectionner une direction.");
+      return false;
+    }
+    setError("");
+    try {
+      const d = await api.addDepartement(libelle, selectedDir.id, selectedDir.libelle);
+      setDepartements((prev) => [...prev, d].sort((a, b) => a.libelle.localeCompare(b.libelle)));
+      setDepartement(d.libelle);
+      toast(`Département « ${d.libelle} » ajouté`);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -159,8 +218,12 @@ function ProfileModal({ user, force, onClose, onSaved }) {
       setError("Le prénom, le nom et l'adresse email professionnelle sont obligatoires.");
       return;
     }
-    if (!departement.trim()) {
+    if (!direction.trim()) {
       setError("Veuillez sélectionner votre direction de rattachement.");
+      return;
+    }
+    if (!departement.trim()) {
+      setError("Veuillez sélectionner votre département de rattachement.");
       return;
     }
     if (!statutPro) {
@@ -175,6 +238,7 @@ function ProfileModal({ user, force, onClose, onSaved }) {
         prenom: prenom.trim(),
         email: email.trim(),
         telephone: telephone.trim(),
+        direction: direction.trim(),
         departement: departement.trim(),
         statut_pro: statutPro,
       });
@@ -216,24 +280,39 @@ function ProfileModal({ user, force, onClose, onSaved }) {
           <input className="text-input" type="email" required placeholder="prenom.nom@orange.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <div className="grid-2">
-          <Field label="Direction de rattachement" hint="Votre direction dans l'organigramme">
-            <select
-              className="text-input select-input"
-              value={departement}
-              onChange={(e) => setDepartement(e.target.value)}
-              required
-            >
-              <option value="" disabled>Sélectionner votre direction…</option>
-              {directions.map((d) => (
-                <option key={d.id} value={d.libelle}>
-                  {d.libelle}
-                </option>
-              ))}
-              {departement && !directions.some((d) => d.libelle === departement) && (
-                <option value={departement}>{departement}</option>
-              )}
-            </select>
+          <Field group label="Direction de rattachement" hint="Votre direction dans l'organigramme">
+            <SelectWithAdd
+              value={direction}
+              options={directions.map((d) => d.libelle)}
+              placeholder="Sélectionner votre direction…"
+              addLabel="+ Ajouter une direction…"
+              inputPlaceholder="Nom de la direction"
+              onChange={(v) => {
+                setDirection(v);
+                const nextDirObj = directions.find((d) => d.libelle === v);
+                const nextDepts = departements.filter(
+                  (d) => (nextDirObj && d.direction_id === nextDirObj.id) || d.direction_libelle === v
+                );
+                if (!nextDepts.some((d) => d.libelle === departement)) {
+                  setDepartement("");
+                }
+              }}
+              onAdd={addDirection}
+            />
           </Field>
+          <Field group label="Département de rattachement" hint={direction ? "Votre département au sein de la direction" : "Sélectionnez d'abord votre direction"}>
+            <SelectWithAdd
+              value={departement}
+              options={availableDepartements.map((d) => d.libelle)}
+              placeholder={direction ? "Sélectionner votre département…" : "Direction requise"}
+              addLabel={direction ? "+ Ajouter un département…" : undefined}
+              inputPlaceholder="Nom du département"
+              onChange={(v) => setDepartement(v)}
+              onAdd={addDepartement}
+            />
+          </Field>
+        </div>
+        <div className="grid-2">
           <Field label="Statut professionnel" hint="Votre statut contractuel">
             <select
               className="text-input select-input"
@@ -247,10 +326,10 @@ function ProfileModal({ user, force, onClose, onSaved }) {
               <option value="stagiaire">Stagiaire</option>
             </select>
           </Field>
+          <Field label="Téléphone">
+            <input className="text-input" inputMode="tel" placeholder="+226 70 00 00 00" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+          </Field>
         </div>
-        <Field label="Téléphone">
-          <input className="text-input" inputMode="tel" placeholder="+226 70 00 00 00" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
-        </Field>
         <ErrorBanner message={error} title="Impossible d'enregistrer" />
       </form>
     </Modal>
@@ -301,7 +380,12 @@ function UserMenu({ onLogout, onEditProfile }) {
           <div className="menu-head">
             <strong>{fullName(user)}</strong>
             <small>{user.email}</small>
-            <small className="num">CUID {user.cuid}{user.statut_pro ? ` · ${STATUT_PRO_LABELS[user.statut_pro] || user.statut_pro}` : ""}</small>
+            <small className="num">
+              CUID {user.cuid}
+              {user.direction ? ` · ${user.direction}` : ""}
+              {user.departement && user.departement !== "Non renseignee" ? ` / ${user.departement}` : ""}
+              {user.statut_pro ? ` · ${STATUT_PRO_LABELS[user.statut_pro] || user.statut_pro}` : ""}
+            </small>
           </div>
           <button type="button" role="menuitem" className="menu-item" onClick={() => { setOpen(false); onEditProfile(); }} aria-label="Modifier mon profil">
             <IconPencil />Modifier mon profil

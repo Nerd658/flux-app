@@ -170,7 +170,7 @@ export default function AdminUsers() {
                 <tr>
                   <th>Utilisateur</th>
                   <th>CUID</th>
-                  <th>Direction</th>
+                  <th>Direction / Département</th>
                   <th>Statut pro</th>
                   <th>Rôle</th>
                   <th>État</th>
@@ -193,8 +193,8 @@ export default function AdminUsers() {
                         </div>
                       </td>
                       <td><span className="mono">{u.cuid}</span></td>
-                      <td>{u.en_attente ? "—" : u.departement}</td>
-                      <td>{u.statut_pro ? (STATUT_PRO_LABELS[u.statut_pro] || u.statut_pro) : "—"}</td>
+                      <td>{u.en_attente ? "-" : u.direction ? `${u.direction} · ${u.departement}` : (u.departement || "-")}</td>
+                      <td>{u.statut_pro ? (STATUT_PRO_LABELS[u.statut_pro] || u.statut_pro) : "-"}</td>
                       <td><span className={`role-pill ${u.role}`}>{ROLE_INFO[u.role]?.label || u.role}</span></td>
                       <td><span className={`state ${u.is_active ? "on" : ""}`}>{u.is_active ? "Actif" : "Désactivé"}</span></td>
                       <td className="r">

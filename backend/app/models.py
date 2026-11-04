@@ -62,7 +62,8 @@ class User(Base):
     nom: Mapped[str] = mapped_column(String(100))
     prenom: Mapped[str] = mapped_column(String(100))
     telephone: Mapped[str] = mapped_column(String(30))
-    departement: Mapped[str] = mapped_column(String(150))
+    direction: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
+    departement: Mapped[str] = mapped_column(String(150), default="Non renseignee")
     statut_pro: Mapped[StatutProfessionnel | None] = mapped_column(Enum(StatutProfessionnel), nullable=True, default=None)
     password_hash: Mapped[str] = mapped_column(String(255))          # Argon2id, jamais en clair
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.demandeur)
@@ -90,7 +91,7 @@ class FluxType(Base):
 
 
 class Direction(Base):
-    """Direction du demandeur (CX, RSSI, ...) ; extensible par les utilisateurs."""
+    """Direction du demandeur (DRSI, DCX, ...) ; extensible par les utilisateurs."""
     __tablename__ = "directions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -98,6 +99,31 @@ class Direction(Base):
     manager_cuid: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    departements: Mapped[list["Departement"]] = relationship(
+        back_populates="direction", cascade="all, delete-orphan", order_by="Departement.libelle"
+    )
+
+    @property
+    def authorized_managers(self) -> list[str]:
+        if not self.manager_cuid:
+            return []
+        return [c.strip().upper() for c in self.manager_cuid.replace(";", ",").split(",") if c.strip()]
+
+
+class Departement(Base):
+    """Departement (ou service) rattache a une Direction parente."""
+    __tablename__ = "departements"
+    __table_args__ = (UniqueConstraint("direction_id", "libelle"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    direction_id: Mapped[int] = mapped_column(ForeignKey("directions.id", ondelete="CASCADE"), index=True)
+    libelle: Mapped[str] = mapped_column(String(150))
+    manager_cuid: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    direction: Mapped[Direction] = relationship(back_populates="departements")
 
     @property
     def authorized_managers(self) -> list[str]:
@@ -139,6 +165,7 @@ class FluxRequest(Base):
     dem_statut_pro: Mapped[StatutProfessionnel] = mapped_column(
         Enum(StatutProfessionnel), default=StatutProfessionnel.employe
     )
+    direction: Mapped[str] = mapped_column(String(150), default="")
     departement: Mapped[str] = mapped_column(String(150))
 
     # Manager rattache au departement ou saisi librement

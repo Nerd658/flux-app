@@ -1,20 +1,85 @@
-[2026-11-04] - Elimination definitive de crypto.randomUUID et polyfill HTTP natif
+[2026-11-04] - Organisation hierarchique Direction et Departement avec delegation des managers N1
 
 What changed:
-- frontend/src/components/ui.jsx :
-  * Remplacement complet de la fonction uid() par un generateur d'identifiant purement natif sans aucun appel a crypto.randomUUID.
-- frontend/index.html :
-  * Ajout d'un polyfill direct dans le <head> garantissant la disponibilite d'un generateur UUID standard meme en acces HTTP non chiffre sur IP.
+- Backend:
+  * backend/app/models.py :
+    - Creation du modele Departement avec cle etrangere direction_id (cascade delete), libelle, manager_cuid, created_by_id, created_at, et contrainte d'unicite (direction_id, libelle).
+    - Ajout de la relation bidirectionnelle departements sur le modele Direction.
+    - Ajout de la colonne direction (String(100), nullable) sur les modeles User et FluxRequest.
+  * backend/app/database.py :
+    - Migration idempotente du schema avec creation de la table departements et ajout de la colonne direction sur users et flux_requests (compatible SQLite, PostgreSQL, MySQL).
+  * backend/app/schemas.py :
+    - Ajout des schemas DepartementOut et DepartementIn.
+    - Enrichissement de DirectionOut avec departements: list[DepartementOut].
+    - Enrichissement de ReferentielsOut avec departements: list[DepartementOut].
+    - Prise en compte de direction et departement sur UserOut, ProfileUpdateIn, FluxRequestIn, RequestSummary, RequestDetail, PublicVerifyOut, UserAdminOut, LabelIn, LabelUsageOut.
+    - Autorisation du caractere '&' dans les regex de validation des libelles.
+  * backend/app/seal.py :
+    - Prise en compte de la direction dans le calcul de l'empreinte cryptographique SHA-256 sans rompre les sceaux existants.
+  * backend/app/services/referential_service.py :
+    - Enregistrement de DepartementDefinition dans REFERENTIAL_REGISTRY.
+    - Support complet du listing hierarchique (list_all et list_with_usage) avec resolution des CUIDs des managers.
+    - Support de la creation, mise a jour et suppression avec verification de l'usage.
+    - Protection stricte de l'integrite referentielle : interdiction de supprimer une direction ayant des departements attaches (erreur 409).
+  * backend/app/services/request_service.py :
+    - Resolution prioritaire des validateurs Niveau 1 depuis le departement, avec repli vers la direction.
+    - Application stricte des regles Zero Trust (auto-validation interdite) sur les managers de departement.
+  * backend/app/pdf.py & backend/app/services/oline_service.py :
+    - Affichage du Departement et de la Direction parente sur le PDF officiel et sur les tickets d'exploitation Oline.
+  * backend/app/seed.py :
+    - Arborescence de test initialisee (directions CX, DRSI, DSI, DT, Marketing et departements associes avec managers configures).
+  * backend/tests/test_departements.py :
+    - 4 tests automatises couvrant l'arborescence referentielle, le CRUD admin, la soumission avec manager de departement et le rejet de manager non habilite.
+
+- Frontend:
+  * frontend/src/api.js :
+    - Ajout de api.addDepartement et mise a jour de api.admin.addRef et api.admin.renameRef avec support de direction_id et direction_libelle.
+  * frontend/src/App.jsx :
+    - ProfileModal avec cascade dynamique Direction -> Departement et ajout a la volee via SelectWithAdd.
+    - Affichage de la Direction et du Departement dans la barre laterale (Sidebar) et le menu utilisateur (UserMenu).
+  * frontend/src/pages/NewRequest.jsx :
+    - Formulaire de nouvelle demande en cascade : selection/ajout de la Direction puis selection/ajout du Departement.
+    - Resolution automatique ou choix contraint du manager habilite selon la configuration du departement.
+  * frontend/src/pages/admin/Referentials.jsx :
+    - Nouvel onglet 'Departements' permettant de creer, lier a une direction parente, configurer les CUIDs managers, renommer et supprimer des departements.
+  * frontend/src/components/RequestView.jsx & frontend/src/pages/Verify.jsx :
+    - Affichage conjoint de la Direction et du Departement sur la vue de detail et sur le portail de controle cryptographique.
+  * frontend/src/pages/admin/Users.jsx :
+    - Colonne 'Direction / Departement' dans la table des utilisateurs.
 
 Why:
-- L'API window.crypto.randomUUID() est reservee par les navigateurs aux contextes securises (HTTPS ou localhost).
-- Lors d'un acces direct en HTTP sur adresse IP sans certificat SSL, son invocation provoque l'erreur 'TypeError: crypto.randomUUID is not a function'.
-- En supprimant toute reference dans le code et en injectant le polyfill en amont, l'erreur est definitivement neutralisee.
+- Permettre une modelisation fidele de l'organigramme de l'entreprise ou chaque Direction regroupe plusieurs Departements specifiques.
+- Attacher les validateurs de Niveau 1 (N1) directement au niveau operationnel du Departement tout en maintenant la retrocompatibilite pour les anciennes demandes et profils.
 
 Files affected:
-- frontend/index.html - Polyfill d'entree de page
-- frontend/src/components/ui.jsx - Generateur d'identifiant universel
-- commit.txt - Fiche descriptive du commit
+- backend/app/database.py - Migration de schema idempotente
+- backend/app/models.py - Modele Departement et colonne direction
+- backend/app/pdf.py - Affichage Direction et Departement sur le PDF
+- backend/app/routers/admin.py - Parametres direction_id sur les referentiels
+- backend/app/routers/public.py - Champ direction sur la verification publique
+- backend/app/routers/referentiels.py - Endpoint POST departements
+- backend/app/schemas.py - Schemas Pydantic DepartementOut et DepartementIn
+- backend/app/seal.py - Sceau cryptographique incluant la direction
+- backend/app/seed.py - Initialisation arborescente directions et departements
+- backend/app/services/auth_service.py - Prise en charge de la direction dans le profil
+- backend/app/services/oline_service.py - Formatage Direction et Departement sur Oline
+- backend/app/services/referential_service.py - Gestion CRUD et hierarchie des referentiels
+- backend/app/services/request_service.py - Validation et resolution N1 par departement
+- backend/tests/test_departements.py - Tests unitaires et d'integration departements
+- frontend/src/App.jsx - Modal de profil en cascade et affichage utilisateur
+- frontend/src/api.js - Methodes API departements et admin
+- frontend/src/components/RequestView.jsx - Bloc organisation sur la vue de demande
+- frontend/src/pages/NewRequest.jsx - Formulaire en cascade Direction et Departement
+- frontend/src/pages/Verify.jsx - Informations de controle avec Direction et Departement
+- frontend/src/pages/admin/Referentials.jsx - Onglet Departements dans l'administration
+- frontend/src/pages/admin/Users.jsx - Colonne Direction et Departement dans la liste
+- commit.txt - Journalisation du commit
 
 Breaking changes:
-- None.
+- None (retrocompatibilite assuree pour les demandes existantes et les profils legacy).
+
+Notes for review:
+- Les tests unitaires et de non-regression passent tous (42/42 tests pytest valides).
+- Le build frontend Vite passe avec succes (aucun warning ni erreur).
+- L'ajout d'un departement exige obligatoirement une direction parente valide.
+- La suppression d'une direction comportant des departements est bloquee par le backend avec un message explicite.

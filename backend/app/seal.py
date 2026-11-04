@@ -51,6 +51,7 @@ def content_hash(req: FluxRequest) -> str:
             req.dem_statut_pro.value if getattr(req, "dem_statut_pro", None) else "employe",
         ],
         "manager": [req.mgr_nom, req.mgr_prenom, req.mgr_email, req.mgr_telephone],
+        "direction": getattr(req, "direction", "") or "",
         "departement": req.departement,
         "periode": req.periode.value,
         "date_debut": req.date_debut.isoformat(),

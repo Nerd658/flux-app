@@ -182,10 +182,15 @@ def build_pdf(req: RequestDetail) -> bytes:
     if m.telephone:
         mgr_lines.append(m.telephone)
 
+    direction_sublines = []
+    if getattr(req, "direction", None):
+        direction_sublines.append(f"Direction : {req.direction}")
+    direction_sublines.append(f"Soumise le {_fmt_dt(req.created_at)}")
+
     cards = [
         _info_card("DEMANDEUR", f"{d.prenom} {d.nom.upper()}", demandeur_lines),
         _info_card("MANAGER", f"{m.prenom} {m.nom.upper()}", mgr_lines),
-        _info_card("DIRECTION", req.departement, [f"Soumise le {_fmt_dt(req.created_at)}"]),
+        _info_card("DÉPARTEMENT", req.departement, direction_sublines),
         _info_card("PÉRIODE SOUHAITÉE", periode_val, periode_lines),
     ]
     info = Table([cards], colWidths=[WIDTH / 4] * 4)

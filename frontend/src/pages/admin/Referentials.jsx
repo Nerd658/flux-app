@@ -6,7 +6,8 @@ import { IconLock, IconPencil, IconPlus, IconTrash } from "../../components/icon
 
 const KINDS = [
   { key: "flux-types", label: "Types d'ouverture", unit: ["demande", "demandes"], hint: "Proposés à la première étape d'une demande. Un type déjà utilisé se renomme mais ne se supprime pas." },
-  { key: "directions", label: "Directions", unit: ["demande", "demandes"], hint: "Direction du demandeur, également attribuée aux comptes utilisateurs." },
+  { key: "directions", label: "Directions", unit: ["demande", "demandes"], hint: "Directions de l'organigramme. Chaque direction regroupe des départements." },
+  { key: "departements", label: "Départements", unit: ["demande", "demandes"], hint: "Département rattaché à une direction parente. Le manager de niveau 1 est associé à ce département." },
   { key: "zones", label: "Zones", unit: ["flux", "flux"], hint: "Zones réseau de la source et de la destination. Le type d'accès d'un flux en découle : « zone source - zone destination »." },
   { key: "pays", label: "Pays", unit: ["flux", "flux"], hint: "Avec une seule valeur, le pays est rempli automatiquement et masqué dans le formulaire." },
 ];
@@ -17,7 +18,8 @@ export default function AdminReferentials() {
   const [tab, setTab] = useState(KINDS[0].key);
   const [label, setLabel] = useState("");
   const [mgrCuid, setMgrCuid] = useState("");
-  const [editing, setEditing] = useState(null); // { id, value, manager_cuid }
+  const [dirId, setDirId] = useState("");
+  const [editing, setEditing] = useState(null); // { id, value, manager_cuid, direction_id }
   const [toDelete, setToDelete] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,12 +29,14 @@ export default function AdminReferentials() {
 
   const kind = KINDS.find((k) => k.key === tab);
   const items = data?.[tab] || [];
+  const directionsList = data?.directions || [];
   const usageText = (n) => (n ? `Utilisé dans ${n} ${n > 1 ? kind.unit[1] : kind.unit[0]}` : "Pas encore utilisé");
 
   function switchTab(key) {
     setTab(key);
     setLabel("");
     setMgrCuid("");
+    setDirId("");
     setEditing(null);
     setError("");
   }
@@ -41,12 +45,24 @@ export default function AdminReferentials() {
     e.preventDefault();
     const value = label.trim();
     if (value.length < 2) return;
+    if (tab === "departements" && !dirId) {
+      setError("Veuillez sélectionner la direction parente.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await api.admin.addRef(tab, value, tab === "directions" ? mgrCuid.trim().toUpperCase() : null);
+      const parentDir = directionsList.find((d) => d.id === Number(dirId));
+      await api.admin.addRef(
+        tab,
+        value,
+        tab === "directions" || tab === "departements" ? mgrCuid.trim().toUpperCase() : null,
+        tab === "departements" ? Number(dirId) : null,
+        tab === "departements" ? parentDir?.libelle : null
+      );
       setLabel("");
       setMgrCuid("");
+      setDirId("");
       toast(`« ${value} » ajouté à la liste ${kind.label}`);
       await load();
     } catch (err) {
@@ -60,14 +76,21 @@ export default function AdminReferentials() {
     e.preventDefault();
     const value = editing.value.trim();
     if (value.length < 2) return;
+    if (tab === "departements" && !editing.direction_id) {
+      setError("Veuillez sélectionner la direction parente.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
+      const parentDir = directionsList.find((d) => d.id === Number(editing.direction_id));
       await api.admin.renameRef(
         tab,
         editing.id,
         value,
-        tab === "directions" ? editing.manager_cuid?.trim().toUpperCase() : null
+        tab === "directions" || tab === "departements" ? editing.manager_cuid?.trim().toUpperCase() : null,
+        tab === "departements" ? Number(editing.direction_id) : null,
+        tab === "departements" ? parentDir?.libelle : null
       );
       setEditing(null);
       toast(`Valeur mise à jour`);
@@ -93,24 +116,34 @@ export default function AdminReferentials() {
           {KINDS.map((k) => (
             <button key={k.key} type="button" role="tab" aria-selected={tab === k.key}
                     className={`tab ${tab === k.key ? "on" : ""}`} onClick={() => switchTab(k.key)}>
-              {k.label}<span className="count num">{data ? data[k.key].length : "–"}</span>
+              {k.label}<span className="count num">{data ? data[k.key]?.length || 0 : "-"}</span>
             </button>
           ))}
         </div>
 
         <div className="ref-head">
           <p>{kind.hint}</p>
-          <form className="ref-add" onSubmit={add}>
+          <form className="ref-add" onSubmit={add} style={{ flexWrap: "wrap", maxWidth: "800px" }}>
+            {tab === "departements" && (
+              <select className="text-input select-input" value={dirId} onChange={(e) => setDirId(e.target.value)}
+                      style={{ maxWidth: "220px" }} aria-label="Direction parente" required>
+                <option value="" disabled>Direction parente…</option>
+                {directionsList.map((d) => (
+                  <option key={d.id} value={d.id}>{d.libelle}</option>
+                ))}
+              </select>
+            )}
             <input className="text-input" maxLength={40}
-                   placeholder={tab === "directions" ? "Nom de la direction (ex. DRSI)" : "Saisir une nouvelle valeur"}
+                   placeholder={tab === "directions" ? "Nom de la direction (ex. DRSI)" : tab === "departements" ? "Nom du département" : "Saisir une nouvelle valeur"}
                    value={label}
                    onChange={(e) => setLabel(e.target.value)} aria-label={`Nouvelle valeur : ${kind.label}`} />
-            {tab === "directions" && (
+            {(tab === "directions" || tab === "departements") && (
               <input className="text-input upper-value" maxLength={255} placeholder="CUIDs Managers (ex. MGR0001, MGR0002)"
                      value={mgrCuid} onChange={(e) => setMgrCuid(e.target.value.replace(/[^A-Za-z0-9,;\s]/g, ""))}
-                     aria-label="CUIDs des managers de département" style={{ maxWidth: "280px" }} />
+                     aria-label="CUIDs des managers" style={{ maxWidth: "280px" }} />
             )}
-            <button className="btn btn-primary" disabled={busy || label.trim().length < 2} title={label.trim().length < 2 ? "Saisir au moins 2 caractères" : "Ajouter"}>
+            <button className="btn btn-primary" disabled={busy || label.trim().length < 2 || (tab === "departements" && !dirId)}
+                    title={tab === "departements" && !dirId ? "Sélectionner la direction parente" : label.trim().length < 2 ? "Saisir au moins 2 caractères" : "Ajouter"}>
               <IconPlus width={18} height={18} />Ajouter
             </button>
           </form>
@@ -123,24 +156,39 @@ export default function AdminReferentials() {
               return (
                 <li key={it.id} className="ref-item">
                   {editing?.id === it.id ? (
-                    <form className="ref-edit" onSubmit={rename}>
+                    <form className="ref-edit" onSubmit={rename} style={{ flexWrap: "wrap" }}>
+                      {tab === "departements" && (
+                        <select className="text-input select-input" value={editing.direction_id || ""}
+                                onChange={(e) => setEditing({ ...editing, direction_id: e.target.value })}
+                                style={{ maxWidth: "200px" }} aria-label="Direction parente" required>
+                          <option value="" disabled>Direction parente…</option>
+                          {directionsList.map((d) => (
+                            <option key={d.id} value={d.id}>{d.libelle}</option>
+                          ))}
+                        </select>
+                      )}
                       <input className="text-input" autoFocus maxLength={40} value={editing.value} aria-label="Nouveau libellé"
                              onChange={(e) => setEditing({ ...editing, value: e.target.value })}
                              onKeyDown={(e) => e.key === "Escape" && setEditing(null)} />
-                      {tab === "directions" && (
+                      {(tab === "directions" || tab === "departements") && (
                         <input className="text-input upper-value" maxLength={255} placeholder="CUIDs Managers"
                                value={editing.manager_cuid || ""}
                                onChange={(e) => setEditing({ ...editing, manager_cuid: e.target.value.replace(/[^A-Za-z0-9,;\s]/g, "") })}
                                style={{ maxWidth: "240px" }} aria-label="CUIDs Managers" />
                       )}
-                      <button className="btn btn-primary btn-sm" disabled={busy || editing.value.trim().length < 2}>Enregistrer</button>
+                      <button className="btn btn-primary btn-sm" disabled={busy || editing.value.trim().length < 2 || (tab === "departements" && !editing.direction_id)}>Enregistrer</button>
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(null)}>Annuler</button>
                     </form>
                   ) : (
                     <>
                       <span className="ref-label">
-                        {it.libelle}
-                        {tab === "directions" && (
+                        <strong>{it.libelle}</strong>
+                        {tab === "departements" && (
+                          <span className="ticket-pill-sm" style={{ marginLeft: "10px", verticalAlign: "middle" }}>
+                            Direction : {it.direction_libelle || "Non rattachée"}
+                          </span>
+                        )}
+                        {(tab === "directions" || tab === "departements") && (
                           <small className="field-hint" style={{ display: "inline-block", marginLeft: "12px" }}>
                             Responsables : <strong>{it.manager_cuid ? it.manager_cuid : "Non assigné"}</strong>
                             {it.managers && it.managers.length > 0 && (
@@ -154,7 +202,7 @@ export default function AdminReferentials() {
                       <span className={`ref-usage ${it.usage ? "used" : ""}`}>{usageText(it.usage)}</span>
                       <div className="row-actions">
                         <button type="button" className="icon-btn" title="Modifier" aria-label={`Modifier ${it.libelle}`}
-                                onClick={() => setEditing({ id: it.id, value: it.libelle, manager_cuid: it.manager_cuid || "" })}><IconPencil /></button>
+                                onClick={() => setEditing({ id: it.id, value: it.libelle, manager_cuid: it.manager_cuid || "", direction_id: it.direction_id || "" })}><IconPencil /></button>
                         <button type="button" className="icon-btn danger" aria-label={`Supprimer ${it.libelle}`}
                                 disabled={items.length <= 1 || locked}
                                 title={items.length <= 1 ? "La liste doit garder au moins une valeur" : locked ? "Déjà utilisé : renommez-le plutôt" : "Supprimer"}

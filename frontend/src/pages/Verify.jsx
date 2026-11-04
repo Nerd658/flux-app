@@ -148,8 +148,14 @@ export default function Verify() {
                   <dt>Demandeur</dt>
                   <dd><strong>{result.demandeur_nom}</strong></dd>
                 </div>
+                {result.direction && (
+                  <div>
+                    <dt>Direction</dt>
+                    <dd>{result.direction}</dd>
+                  </div>
+                )}
                 <div>
-                  <dt>Direction</dt>
+                  <dt>{result.direction ? "Département" : "Direction"}</dt>
                   <dd>{result.departement}</dd>
                 </div>
                 <div>

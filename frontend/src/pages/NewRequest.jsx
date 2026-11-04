@@ -52,16 +52,18 @@ function Select({ value, onChange, options, placeholder = "Choisir…", invalid 
 }
 
 // Validation côté client : confort de saisie uniquement, le serveur reste l'autorité
-function validateInfos(f, selectedDir) {
+function validateInfos(f, selectedDir, selectedDept) {
   const e = {};
-  if (selectedDir?.managers?.length > 1 && !f.manager_cuid) {
+  const activeMgrs = (selectedDept?.managers?.length ? selectedDept.managers : selectedDir?.managers) || [];
+  if (activeMgrs.length > 1 && !f.manager_cuid) {
     e.manager_cuid = "Veuillez sélectionner votre responsable de département";
   }
   if (!f.manager.nom.trim()) e.mgr_nom = "Nom requis";
   if (!f.manager.prenom.trim()) e.mgr_prenom = "Prénom requis";
   if (!EMAIL.test(f.manager.email.trim())) e.mgr_email = "Email invalide";
   if (!PHONE.test(f.manager.telephone.trim())) e.mgr_tel = "Format attendu : +226 70 00 00 00";
-  if (!f.departement.trim()) e.departement = "Sélectionnez votre direction";
+  if (!f.direction?.trim()) e.direction = "Sélectionnez votre direction";
+  if (!f.departement?.trim()) e.departement = "Sélectionnez votre département";
   if (!f.date_debut) e.date_debut = "Choisissez la date de début";
   else if (f.date_debut < todayIso()) e.date_debut = "La date ne peut pas être passée";
   if (f.periode === "temporaire") {
@@ -79,7 +81,8 @@ function fromRefused(src, ref) {
     flux_type_id: type ? type.id : null,
     manager: { ...src.manager },
     manager_cuid: src.manager_cuid || null,
-    departement: src.departement,
+    direction: src.direction || "",
+    departement: src.departement || "",
     periode: src.periode,
     date_debut: keep(src.date_debut),
     date_fin: src.periode === "temporaire" ? keep(src.date_fin) : "",
@@ -109,9 +112,10 @@ export default function NewRequest() {
     flux_type_id: null,
     manager: { nom: "", prenom: "", email: "", telephone: "" },
     manager_cuid: null,
-    departement: "",               // aucune direction imposée : le demandeur choisit
+    direction: "",
+    departement: "",
     periode: "temporaire",
-    date_debut: "",                // aucune date imposée : le demandeur choisit
+    date_debut: "",
     date_fin: "",
     lines: [],
   });
@@ -127,7 +131,41 @@ export default function NewRequest() {
           return;
         }
         const pays = r.pays.length === 1 ? r.pays[0].libelle : "";
-        setForm((f) => ({ ...f, lines: [emptyLine(pays)] }));
+        let initDir = user?.direction || "";
+        let initDept = user?.departement && user?.departement !== "Non renseignee" ? user.departement : "";
+
+        if (!initDir && initDept) {
+          const matchDept = (r.departements || []).find((d) => d.libelle === initDept);
+          if (matchDept?.direction_libelle) {
+            initDir = matchDept.direction_libelle;
+          } else {
+            const matchDir = (r.directions || []).find((d) => d.libelle === initDept);
+            if (matchDir) {
+              initDir = matchDir.libelle;
+              initDept = "";
+            }
+          }
+        }
+
+        let initMgrCuid = null;
+        let initMgr = { nom: "", prenom: "", email: "", telephone: "" };
+        if (initDept) {
+          const depObj = (r.departements || []).find((d) => d.libelle === initDept);
+          if (depObj?.managers?.length === 1) {
+            const m = depObj.managers[0];
+            initMgrCuid = m.cuid;
+            initMgr = { nom: m.nom, prenom: m.prenom, email: m.email, telephone: m.telephone || "" };
+          }
+        }
+
+        setForm((f) => ({
+          ...f,
+          direction: initDir,
+          departement: initDept,
+          manager_cuid: initMgrCuid,
+          manager: initMgr,
+          lines: [emptyLine(pays)],
+        }));
       })
       .catch((e) => setError(e.message));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -139,13 +177,21 @@ export default function NewRequest() {
     if (step === 2 && !form.lines.some((l) => l._id === openId) && form.lines.length) setOpenId(form.lines[0]._id);
   }, [step, form.lines, openId]);
 
-  const selectedDir = ref?.directions?.find((d) => d.libelle === form.departement);
+  const selectedDir = ref?.directions?.find((d) => d.libelle === form.direction);
+  const availableDepartements = (ref?.departements || []).filter(
+    (d) => (selectedDir && d.direction_id === selectedDir.id) || d.direction_libelle === form.direction
+  );
+  const selectedDept = (ref?.departements || []).find(
+    (d) => d.libelle === form.departement && ((selectedDir && d.direction_id === selectedDir.id) || d.direction_libelle === form.direction)
+  ) || (ref?.departements || []).find((d) => d.libelle === form.departement);
+
+  const activeManagers = (selectedDept?.managers?.length ? selectedDept.managers : selectedDir?.managers) || [];
 
   // Une fois l'étape tentée, les messages d'erreur suivent la saisie en direct
   useEffect(() => {
-    if (step === 1 && tried[1]) setErrors(validateInfos(form, selectedDir));
+    if (step === 1 && tried[1]) setErrors(validateInfos(form, selectedDir, selectedDept));
     if (step === 2 && tried[2]) setErrors(validateLines(form.lines));
-  }, [form, step, tried, selectedDir]);
+  }, [form, step, tried, selectedDir, selectedDept]);
 
   if (!ref) return error ? <ErrorBanner title="Chargement impossible" message={error} /> : <Loading />;
 
@@ -177,11 +223,11 @@ export default function NewRequest() {
 
   // Corps envoyé à l'API : uniquement les champs attendus (le backend refuse tout champ en trop)
   const payload = () => {
-    const selDir = ref?.directions?.find((d) => d.libelle === form.departement);
-    const mgrCuid = form.manager_cuid || (selDir?.managers?.length === 1 ? selDir.managers[0].cuid : selDir?.manager_cuid) || null;
+    const mgrCuid = form.manager_cuid || (activeManagers.length === 1 ? activeManagers[0].cuid : (selectedDept?.manager_cuid || selectedDir?.manager_cuid)) || null;
     return {
       flux_type_id: form.flux_type_id,
       manager: form.manager,
+      direction: form.direction,
       departement: form.departement,
       manager_cuid: mgrCuid,
       periode: form.periode,
@@ -214,14 +260,36 @@ export default function NewRequest() {
     }
   }
 
-  // Ajoute une direction partagée puis la sélectionne ; renvoie true en cas de succès
+  // Ajoute une direction partagée puis la sélectionne
   async function addDirection(libelle) {
     setError("");
     try {
       const d = await api.addDirection(libelle);
       setRef((r) => ({ ...r, directions: [...r.directions, d].sort((a, b) => a.libelle.localeCompare(b.libelle)) }));
-      set({ departement: d.libelle });
+      set({ direction: d.libelle, departement: "", manager_cuid: null, manager: { nom: "", prenom: "", email: "", telephone: "" } });
       toast(`Direction « ${d.libelle} » ajoutée et disponible pour tous`);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }
+
+  // Ajoute un département partagé rattaché à la direction sélectionnée
+  async function addDepartement(libelle) {
+    if (!selectedDir) {
+      setError("Veuillez d'abord sélectionner une direction.");
+      return false;
+    }
+    setError("");
+    try {
+      const d = await api.addDepartement(libelle, selectedDir.id, selectedDir.libelle);
+      setRef((r) => ({
+        ...r,
+        departements: [...(r.departements || []), d].sort((a, b) => a.libelle.localeCompare(b.libelle)),
+      }));
+      set({ departement: d.libelle, manager_cuid: null, manager: { nom: "", prenom: "", email: "", telephone: "" } });
+      toast(`Département « ${d.libelle} » ajouté et rattaché à ${selectedDir.libelle}`);
       return true;
     } catch (e) {
       setError(e.message);
@@ -233,7 +301,7 @@ export default function NewRequest() {
     setError("");
     if (step === 1) {
       setTried((t) => ({ ...t, 1: true }));
-      const e = validateInfos(form, selectedDir);
+      const e = validateInfos(form, selectedDir, selectedDept);
       setErrors(e);
       if (Object.keys(e).length) return;
     }
@@ -366,39 +434,57 @@ export default function NewRequest() {
               <div><span>Email</span><strong>{user.email}</strong></div>
               <div><span>Téléphone</span><strong className="num">{user.telephone}</strong></div>
             </div>
-            <Field group label="Direction" error={ee.departement} className="narrow-field"
-                   hint={ee.departement ? undefined : "Votre direction n'est pas listée ? Choisissez « Ajouter une direction »."}>
-              <SelectWithAdd value={form.departement} options={ref.directions.map((d) => d.libelle)} invalid={!!ee.departement}
-                             placeholder="Sélectionner la direction" addLabel="+ Ajouter une direction…"
-                             inputPlaceholder="Saisir le nom de la direction"
-                             onChange={(v) => {
-                               const dir = ref.directions.find((d) => d.libelle === v);
-                               if (dir?.managers?.length === 1) {
-                                 const m = dir.managers[0];
+            <div className="grid-2">
+              <Field group label="Direction" error={ee.direction}
+                     hint={ee.direction ? undefined : "Votre direction de rattachement"}>
+                <SelectWithAdd value={form.direction} options={ref.directions.map((d) => d.libelle)} invalid={!!ee.direction}
+                               placeholder="Sélectionner la direction" addLabel="+ Ajouter une direction…"
+                               inputPlaceholder="Saisir le nom de la direction"
+                               onChange={(v) => {
                                  set({
-                                   departement: v,
-                                   manager_cuid: m.cuid,
-                                   manager: {
-                                     nom: m.nom,
-                                     prenom: m.prenom,
-                                     email: m.email,
-                                     telephone: m.telephone || form.manager.telephone,
-                                   },
-                                 });
-                               } else if (dir?.managers?.length > 1) {
-                                 set({
-                                   departement: v,
-                                   manager_cuid: "",
+                                   direction: v,
+                                   departement: "",
+                                   manager_cuid: null,
                                    manager: { nom: "", prenom: "", email: "", telephone: "" },
                                  });
-                               } else {
-                                 set({
-                                   departement: v,
-                                   manager_cuid: dir?.manager_cuid || null,
-                                 });
-                               }
-                             }} onAdd={addDirection} />
-            </Field>
+                               }} onAdd={addDirection} />
+              </Field>
+              <Field group label="Département" error={ee.departement}
+                     hint={ee.departement ? undefined : (!form.direction ? "Sélectionnez d'abord votre direction" : "Votre département au sein de la direction")}>
+                <SelectWithAdd value={form.departement} options={availableDepartements.map((d) => d.libelle)} invalid={!!ee.departement}
+                               placeholder={form.direction ? "Sélectionner le département" : "Direction requise"}
+                               addLabel={form.direction ? "+ Ajouter un département…" : undefined}
+                               inputPlaceholder="Saisir le nom du département"
+                               onChange={(v) => {
+                                 const depObj = availableDepartements.find((d) => d.libelle === v);
+                                 const mgrs = depObj?.managers?.length ? depObj.managers : (selectedDir?.managers || []);
+                                 if (mgrs.length === 1) {
+                                   const m = mgrs[0];
+                                   set({
+                                     departement: v,
+                                     manager_cuid: m.cuid,
+                                     manager: {
+                                       nom: m.nom,
+                                       prenom: m.prenom,
+                                       email: m.email,
+                                       telephone: m.telephone || form.manager.telephone,
+                                     },
+                                   });
+                                 } else if (mgrs.length > 1) {
+                                   set({
+                                     departement: v,
+                                     manager_cuid: "",
+                                     manager: { nom: "", prenom: "", email: "", telephone: "" },
+                                   });
+                                 } else {
+                                   set({
+                                     departement: v,
+                                     manager_cuid: depObj?.manager_cuid || selectedDir?.manager_cuid || null,
+                                   });
+                                 }
+                               }} onAdd={addDepartement} />
+              </Field>
+            </div>
           </section>
 
           <section className="card">
@@ -406,22 +492,22 @@ export default function NewRequest() {
               <div>
                 <h2>Responsable de département (Manager)</h2>
                 <p>
-                  {selectedDir?.managers?.length > 1
-                    ? "Plusieurs responsables sont habilités pour votre direction. Choisissez le vôtre pour la validation N1."
-                    : selectedDir?.managers?.length === 1
-                    ? `Responsable désigné pour la direction ${selectedDir.libelle}.`
+                  {activeManagers.length > 1
+                    ? "Plusieurs responsables sont habilités pour votre département. Choisissez le vôtre pour la validation N1."
+                    : activeManagers.length === 1
+                    ? `Responsable désigné pour ${selectedDept ? `le département ${selectedDept.libelle}` : `la direction ${selectedDir?.libelle}`}.`
                     : "Votre responsable hiérarchique de département pour la validation de Niveau 1."}
                 </p>
               </div>
             </div>
 
-            {selectedDir?.managers?.length > 1 && (
+            {activeManagers.length > 1 && (
               <Field group label="Responsable habilité" error={ee.manager_cuid} className="narrow-field"
                      hint="La validation N1 lui sera directement adressée.">
                 <select className={`text-input select-input ${ee.manager_cuid ? "invalid" : ""}`}
                         value={form.manager_cuid || ""}
                         onChange={(e) => {
-                          const chosen = selectedDir.managers.find((m) => m.cuid === e.target.value);
+                          const chosen = activeManagers.find((m) => m.cuid === e.target.value);
                           if (chosen) {
                             set({
                               manager_cuid: chosen.cuid,
@@ -440,7 +526,7 @@ export default function NewRequest() {
                           }
                         }}>
                   <option value="" disabled>Choisir votre responsable…</option>
-                  {selectedDir.managers.map((m) => (
+                  {activeManagers.map((m) => (
                     <option key={m.cuid} value={m.cuid}>
                       {m.prenom} {m.nom.toUpperCase()} ({m.cuid}) - {m.email}
                     </option>
