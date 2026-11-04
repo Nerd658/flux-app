@@ -1,18 +1,19 @@
-[2026-11-04] - Amelioration de l ergonomie du formulaire d ajout de direction dans l administration
+[2026-11-04] - Elimination definitive de crypto.randomUUID et polyfill HTTP natif
 
 What changed:
-- frontend/src/pages/admin/Referentials.jsx :
-  * Clarification des placeholders : 'Nom de la direction (ex. DRSI)' et infobulle sur le bouton Ajouter.
-- frontend/src/styles.css :
-  * Augmentation de l espace alloue au formulaire d ajout (.ref-add) pour un meilleur confort visuel lors de la saisie des directions et des CUIDs managers.
+- frontend/src/components/ui.jsx :
+  * Remplacement complet de la fonction uid() par un generateur d'identifiant purement natif sans aucun appel a crypto.randomUUID.
+- frontend/index.html :
+  * Ajout d'un polyfill direct dans le <head> garantissant la disponibilite d'un generateur UUID standard meme en acces HTTP non chiffre sur IP.
 
 Why:
-- Le bouton Ajouter etait grise par defaut tant qu au moins 2 caracteres n etaient pas saisis dans le nom de la direction.
-- L affichage cote a cote des deux champs et du bouton etait un peu etroit dans le conteneur de 460px.
+- L'API window.crypto.randomUUID() est reservee par les navigateurs aux contextes securises (HTTPS ou localhost).
+- Lors d'un acces direct en HTTP sur adresse IP sans certificat SSL, son invocation provoque l'erreur 'TypeError: crypto.randomUUID is not a function'.
+- En supprimant toute reference dans le code et en injectant le polyfill en amont, l'erreur est definitivement neutralisee.
 
 Files affected:
-- frontend/src/pages/admin/Referentials.jsx - Placeholder specifique et infobulle
-- frontend/src/styles.css - Elargissement de la zone de saisie
+- frontend/index.html - Polyfill d'entree de page
+- frontend/src/components/ui.jsx - Generateur d'identifiant universel
 - commit.txt - Fiche descriptive du commit
 
 Breaking changes:

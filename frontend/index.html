@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <title>Demandes d'ouverture de flux</title>
+    <script>
+      // Polyfill contextes non securises (HTTP direct par IP) : crypto.randomUUID
+      if (typeof window !== "undefined") {
+        try {
+          if (!window.crypto) window.crypto = {};
+          if (!window.crypto.randomUUID) {
+            window.crypto.randomUUID = function () {
+              return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+                var r = (Math.random() * 16) | 0;
+                var v = c === "x" ? r : (r & 0x3) | 0x8;
+                return v.toString(16);
+              });
+            };
+          }
+        } catch (e) {}
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

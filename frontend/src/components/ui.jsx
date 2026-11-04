@@ -83,12 +83,7 @@ const ToastContext = createContext(() => {});
 export const useToast = () => useContext(ToastContext);
 
 let toastSeq = 0;
-const uid = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${++toastSeq}-${Math.random().toString(36).slice(2, 7)}`;
-};
+const uid = () => `toast-${Date.now()}-${++toastSeq}-${Math.random().toString(36).slice(2, 9)}`;
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
